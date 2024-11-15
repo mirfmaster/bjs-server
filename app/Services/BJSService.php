@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Client\BJSClient;
+use App\Traits\LoggerTrait;
 
 class BJSService
 {
+    use LoggerTrait;
     public $likeServiceList = [165];
     public function __construct(public BJSClient $bjs) {}
 
@@ -44,7 +46,7 @@ class BJSService
 
             return $orders;
         } catch (\Throwable $th) {
-            dump("[getOrdersData]: " . $th->getMessage());
+            $this->logError($th);
             return [];
         }
     }

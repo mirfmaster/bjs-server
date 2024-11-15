@@ -101,7 +101,6 @@ class BJSClient
     public function checkAuth()
     {
         try {
-            throw ("test");
             $testSession = $this->cliXML->request('GET', '/admin/api/general/check-auth');
             $response = (string) $testSession->getBody();
             $responseJson = json_decode($response);

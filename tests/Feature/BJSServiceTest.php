@@ -82,6 +82,7 @@ class BJSServiceTest extends TestCase
 
     public function testGetOrdersData()
     {
+        $this->service->auth();
         // Test with valid service ID from likeServiceList
         $serviceId = $this->service->likeServiceList[0];
         $orders = $this->service->getOrdersData($serviceId, 0);

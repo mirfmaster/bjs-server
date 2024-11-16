@@ -6,6 +6,7 @@ use App\Traits\LoggerTrait;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\FileCookieJar;
 use Illuminate\Support\Facades\Http;
+use Psr\Http\Message\ResponseInterface;
 
 class BJSClient
 {
@@ -213,5 +214,10 @@ class BJSClient
         $pathParts = explode('/', trim($path, '/'));
 
         return $pathParts[0];
+    }
+
+    public function getOrdersList(int $status, int $serviceId, int $pageSize): ResponseInterface
+    {
+        return $this->cliXML->get("/admin/api/orders/list?status=$status&service=$serviceId&page_size=$pageSize");
     }
 }

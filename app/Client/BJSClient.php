@@ -156,4 +156,62 @@ class BJSClient
             return false;
         }
     }
+
+    public function cancelOrder($id)
+    {
+        try {
+            return $this->cliXML->post('/admin/api/orders/cancel/' . $id);
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return false;
+        }
+    }
+
+    public function changeStatus($id, $status)
+    {
+        try {
+            return $this->cliXML->post('/admin/api/orders/change-status/' . $id, [
+                'form_params' => [
+                    'status' => $status,
+                ],
+            ]);
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return false;
+        }
+    }
+
+    public function changeStatusServices($id, bool $status)
+    {
+        try {
+            return $this->cliXML->post('/admin/api/services/change-status/' . $id, [
+                'form_params' => [
+                    'status' => $status,
+                ],
+            ]);
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return false;
+        }
+    }
+
+    public function getUsername($link)
+    {
+        $input = str_replace('@', '', $link);
+
+        // Replace /reel/ and /tv/ with /p/ in the URL
+        $input = str_replace(['/reel/', '/tv/'], '/p/', $input);
+
+        if (!filter_var($input, FILTER_VALIDATE_URL)) {
+            return $input;
+        }
+
+        $path = parse_url($input, PHP_URL_PATH);
+        $pathParts = explode('/', trim($path, '/'));
+
+        return $pathParts[0];
+    }
 }

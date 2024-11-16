@@ -5,7 +5,9 @@ namespace App\Client;
 use App\Traits\LoggerTrait;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\FileCookieJar;
+use GuzzleHttp\Cookie\SetCookie;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
 use Psr\Http\Message\ResponseInterface;
 
 class BJSClient
@@ -20,10 +22,24 @@ class BJSClient
     public $loginState = false;
     public $isValidSession = false;
     private FileCookieJar $cookie;
+    private string $redisKey = 'system:bjs_cookies';
 
     public function __construct()
     {
-        $this->cookie = new FileCookieJar(storage_path('app/bjs-cookies.json'), true);
+        $cookieFilePath = storage_path('app/bjs-cookies.json');
+
+        // Try to load cookies from Redis first
+        $cookies = $this->loadCookiesFromRedis();
+
+        // Create new cookie jar
+        $this->cookie = new FileCookieJar($cookieFilePath, true);
+
+        // If we have cookies in Redis, load them into the jar
+        if ($cookies) {
+            foreach ($cookies as $cookie) {
+                $this->cookie->setCookie(new SetCookie($cookie));
+            }
+        }
 
         $url = config('app.bjs_api');
 
@@ -48,23 +64,20 @@ class BJSClient
         ]);
     }
 
-    private function getCSRFToken()
+    private function syncCookiesToRedis(): void
     {
-        $req = $this->cli->request('GET', '/admin');
-        $html = (string) $req->getBody();
-
-        return $this->extractToken($html);
+        $cookies = $this->cookie->toArray();
+        if (!empty($cookies)) {
+            Redis::setex($this->redisKey, 86400, serialize($cookies)); // 24 hours TTL
+        }
     }
 
-    private function extractToken($html)
+    private function loadCookiesFromRedis(): ?array
     {
-        $pattern = '/<meta name="csrf-token" content="(.*?)">/';
-        preg_match($pattern, $html, $matches);
-
-        return $matches[1] ?? null;
+        $cookies = Redis::get($this->redisKey);
+        return $cookies ? unserialize($cookies) : null;
     }
 
-    // @return int
     public function login()
     {
         try {
@@ -76,7 +89,7 @@ class BJSClient
             $username = config('app.bjs_username');
             $password = config('app.bjs_password');
             $req = $this->cli->request('POST', '/admin', [
-                'headers' =>             [
+                'headers' => [
                     'X-Requested-With' => 'XMLHttpRequest',
                     'Referer' => 'https://belanjasosmed.com/admin',
                     'Origin' => 'https://belanjasosmed.com/',
@@ -91,10 +104,14 @@ class BJSClient
 
             $code = $req->getStatusCode();
 
-            return $code === 200;
+            if ($code === 200) {
+                $this->syncCookiesToRedis(); // Sync after successful login
+                return true;
+            }
+
+            return false;
         } catch (\Throwable $th) {
             $this->logError($th);
-
             return false;
         }
     }
@@ -106,13 +123,33 @@ class BJSClient
             $response = (string) $testSession->getBody();
             $responseJson = json_decode($response);
 
-            return $responseJson->data->auth;
+            $isAuth = $responseJson->data->auth;
+            if ($isAuth) {
+                $this->syncCookiesToRedis(); // Sync if auth is successful
+            }
+
+            return $isAuth;
         } catch (\Throwable $th) {
             $this->cookie->clear();
             $this->logError($th);
-
             return false;
         }
+    }
+
+    private function getCSRFToken()
+    {
+        $req = $this->cli->request('GET', '/admin');
+        $html = (string) $req->getBody();
+
+        return $this->extractToken($html);
+    }
+
+    private function extractToken($html)
+    {
+        $pattern = '/<meta name="csrf-token" content="(.*?)">/';
+        preg_match($pattern, $html, $matches);
+
+        return $matches[1] ?? null;
     }
 
     public function getInfo($orderId): object

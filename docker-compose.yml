@@ -19,6 +19,24 @@ services:
             timeout: 20s
             retries: 3
 
+    redis:
+        image: redis:7-alpine
+        container_name: bjs_redis
+        hostname: redis
+        restart: unless-stopped
+        ports:
+            - 6379:6379
+        volumes:
+            - redis_data:/data
+        command: redis-server --appendonly yes
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 30s
+            timeout: 20s
+            retries: 3
+
 volumes:
     pgsql_data:
+        driver: local
+    redis_data:
         driver: local

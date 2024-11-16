@@ -42,8 +42,8 @@ class BJSClientTest extends TestCase
         $this->bjsClient = new BJSClient();
 
         // Replace the clients with mocked versions
-        $this->bjsClient->client = new Client(['handler' => $handlerStack]);
-        $this->bjsClient->clientXML = new Client(['handler' => $handlerStackXML]);
+        $this->bjsClient->cli = new Client(['handler' => $handlerStack]);
+        $this->bjsClient->cliXML = new Client(['handler' => $handlerStackXML]);
     }
 
     public function testSuccessfulLogin()

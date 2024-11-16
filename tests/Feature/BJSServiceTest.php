@@ -87,9 +87,6 @@ class BJSServiceTest extends TestCase
         $serviceId = $this->service->likeServiceList[0];
         $orders = $this->service->getOrdersData($serviceId, 0);
 
-        // Dump for debugging
-        dump('Orders response:', $orders);
-
         // Assert it's a collection
         $this->assertInstanceOf(\Illuminate\Support\Collection::class, $orders);
     }

@@ -4,59 +4,48 @@ namespace App\Services;
 
 use App\Client\BJSClient;
 use App\Traits\LoggerTrait;
+use Illuminate\Support\Collection;
 
 class BJSService
 {
     use LoggerTrait;
     public $likeServiceList = [165];
-    public function __construct(public BJSClient $bjs) {}
 
-    public function login()
-    {
-        $resp = $this->bjs->login();
-
-        return !!$resp;
+    public function __construct(
+        public BJSClient $bjs
+    ) {
     }
 
-    public function auth()
+    public function login(): bool
+    {
+        $resp = $this->bjs->login();
+        return (bool) $resp;
+    }
+
+    public function auth(): bool
     {
         $isLogin = $this->bjs->checkAuth();
         if (!$isLogin) {
-            $login = $this->login();
-            if ($login) {
-                return true;
-            }
-
-            return false;
+            return $this->login();
         }
-
         return true;
     }
 
-
-    public function getOrdersData($serviceId, $status, $pageSize = 100)
+    public function getOrdersData(int $serviceId, int $status, int $pageSize = 100): Collection
     {
         try {
-            $request = $this->bjs
-                ->cliXML
-                ->get("/admin/api/orders/list?status=$status&service=$serviceId&page_size=$pageSize");
-            $resp =  json_decode($request->getBody(), false);
-
-            $orders = collect($resp->data->orders);
-
-            return $orders;
+            $request = $this->bjs->getOrdersList($status, $serviceId, $pageSize);
+            $resp = json_decode($request->getBody(), false);
+            return collect($resp->data->orders);
         } catch (\Throwable $th) {
             $this->logError($th);
-            return [];
+            return collect([]);
         }
     }
 
-    // NOTE: HELPER
-    public function getUsername($link)
+    public function getUsername(string $link): string
     {
         $input = str_replace('@', '', $link);
-
-        // Replace /reel/ and /tv/ with /p/ in the URL
         $input = str_replace(['/reel/', '/tv/'], '/p/', $input);
 
         if (!filter_var($input, FILTER_VALIDATE_URL)) {
@@ -65,7 +54,6 @@ class BJSService
 
         $path = parse_url($input, PHP_URL_PATH);
         $pathParts = explode('/', trim($path, '/'));
-
-        return $pathParts[0];
+        return $pathParts[0] ?? '';
     }
 }

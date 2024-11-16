@@ -1,0 +1,24 @@
+services:
+    pgsql:
+        image: postgres:17-alpine
+        container_name: bjs_pgsql
+        hostname: postgres
+        restart: unless-stopped
+        ports:
+            - 5432:5432
+        volumes:
+            - pgsql_data:/var/lib/postgresql/data
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: securedb
+            POSTGRES_DB: bjsdb
+        command: ["postgres", "-c", "wal_level=logical"]
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d bjsdb"]
+            interval: 30s
+            timeout: 20s
+            retries: 3
+
+volumes:
+    pgsql_data:
+        driver: local

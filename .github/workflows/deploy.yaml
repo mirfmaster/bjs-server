@@ -1,0 +1,19 @@
+name: deployment
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+' # Matches semantic versioning tags like 0.0.1
+
+jobs:
+  deploy_prod:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          script: cd /var/www/html/bjs-server && ./.github/deploy.sh

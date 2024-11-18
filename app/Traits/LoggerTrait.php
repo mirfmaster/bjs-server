@@ -6,14 +6,15 @@ use Illuminate\Support\Facades\Log;
 
 trait LoggerTrait
 {
-    protected function logError(\Throwable $th, string $context = null)
+    protected function logError(\Throwable $th, array $context = null)
     {
         $caller = debug_backtrace()[1];
         $functionName = $caller['function'] ?? 'unknown';
         $ctx = [
-            "func" => $context ?? $functionName,
+            "func" => $functionName,
             "class" => get_class($this),
-            "line" => $th->getLine()
+            "line" => $th->getLine(),
+            "context" => $context,
         ];
 
         if (config("app.debug")) {

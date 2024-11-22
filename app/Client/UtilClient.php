@@ -93,7 +93,7 @@ class UtilClient
         return null;
     }
 
-    public static function __IGGetInfo($username)
+    public function __IGGetInfo($username)
     {
         $resp = [
             'username' => $username,
@@ -183,5 +183,16 @@ class UtilClient
         }
 
         return (object) $resp;
+    }
+
+    public static function withOrderMargin(float $value, float $bonusPercent = 10): int
+    {
+        $bonusValue = $value * ($bonusPercent / 100);
+        $bonusValue = min(100, $bonusValue);
+        $bonusValue = max(10, $bonusValue);
+
+        $newValue = $value + $bonusValue;
+
+        return round($newValue);
     }
 }

@@ -4,26 +4,28 @@ namespace App\Services;
 
 use App\Models\Order;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Contracts\Redis\Factory as RedisFactory;
 
 class OrderService
 {
-    private $redis;
-
     public function __construct(
         private Order $order,
-        RedisFactory $redis
+        private Redis $redis
     ) {
         $this->redis = $redis;
     }
 
-    public function create(array $data)
+    public function createAndUpdateCache(array $data)
     {
         $created = $this->order->create($data);
         $this->createRedisKey($created->id, $data['requested']);
         $this->updateCache();
 
         return $created;
+    }
+
+    public function findBJSID($id)
+    {
+        return $this->order->query()->where('bjs_id', $id)->limit(1)->first();
     }
 
     private function createRedisKey($id, $requested): void

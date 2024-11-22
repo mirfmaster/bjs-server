@@ -6,6 +6,7 @@ use App\Traits\LoggerTrait;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\FileCookieJar;
 use GuzzleHttp\Cookie\SetCookie;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
 use Psr\Http\Message\ResponseInterface;
@@ -62,6 +63,11 @@ class BJSClient
                 'Origin' => $url,
             ],
         ]);
+    }
+
+    public function isAllowedLogin(): bool
+    {
+        return Redis::get('system:bjs:login-state') === 'true';
     }
 
     private function syncCookiesToRedis(): void
@@ -256,5 +262,17 @@ class BJSClient
     public function getOrdersList(int $status, int $serviceId, int $pageSize): ResponseInterface
     {
         return $this->cliXML->get("/admin/api/orders/list?status=$status&service=$serviceId&page_size=$pageSize");
+    }
+
+    public function getOrdersData(int $serviceId, int $status, int $pageSize = 100): Collection
+    {
+        try {
+            $request = $this->getOrdersList($status, $serviceId, $pageSize);
+            $resp = json_decode($request->getBody(), false);
+            return collect($resp->data->orders);
+        } catch (\Throwable $th) {
+            $this->logError($th);
+            return collect([]);
+        }
     }
 }

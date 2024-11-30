@@ -110,6 +110,7 @@ class UtilClient
             try {
                 $resp['counter'] = $i;
                 $proxy = Util::generateProxyUrl();
+                $resp['proxy'] = $proxy;
                 $response = Http::withHeaders([
                     'X-IG-App-ID' => '936619743392459',
                     'Origin' => 'https://www.instagram.com',
@@ -134,8 +135,11 @@ class UtilClient
                         break;
                     }
 
+                    // unset($data['edge_felix_video_timeline']);
+                    // unset($data['edge_related_profiles']);
+
                     $resp['found'] = true;
-                    $resp['data'] = (object) $response['data']['user'];
+                    // $resp['data'] = (object) $data;
 
                     $total_media = intval($data['edge_owner_to_timeline_media']['count']);
                     $anonym = strpos($data['profile_pic_url'], '2446069589734326272') !== false;

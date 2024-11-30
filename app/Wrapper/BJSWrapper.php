@@ -175,10 +175,28 @@ class BJSWrapper
         }
     }
 
+    public function processCachedOrders()
+    {
+        $context = ['process' => 'check-cached-order'];
+        $orders = $this->order->getCachedOrders();
+
+        $orderCount = $orders->count();
+        Log::info("Cached order count: " . $orderCount, $context);
+
+        if ($orderCount == 0) {
+            return;
+        }
+
+        foreach ($orders as $o) {
+            $this->processCachedOrder($o, $context);
+        }
+    }
+
+
     /**
      * Process individual order and update its status
      */
-    private function processOrder($order, array $baseContext): void
+    private function processCachedOrder($order, array $baseContext): void
     {
         $this->order->setOrderID($order->id);
         $redisData = $this->order->getOrderRedisKeys();

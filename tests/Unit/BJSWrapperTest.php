@@ -71,6 +71,22 @@ class BJSWrapperTest extends TestCase
 
     /**
      * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_process_cached_orders
+     */
+    public function test_process_cached_orders(): void
+    {
+        $this->markTestSkipped('Remove this line to run the test.');
+
+        // Execute the actual fetch
+        $this->wrapper->processCachedOrders();
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
+
+
+    /**
+     * To run this test:
      * php artisan test --filter=BJSWrapperTest::test_fetch_all
      */
     public function test_fetch_all(): void

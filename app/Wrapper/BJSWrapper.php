@@ -174,4 +174,100 @@ class BJSWrapper
             }
         }
     }
+
+    /**
+     * Process individual order and update its status
+     */
+    private function processOrder($order, array $baseContext): void
+    {
+        $this->order->setOrderID($order->id);
+        $redisData = $this->order->getOrderRedisKeys();
+
+        $context = array_merge($baseContext, [
+            'order_id' => $order->id,
+            'bjs_id' => $order->bjs_id,
+            'redis_data' => $redisData
+        ]);
+
+        Log::info("Processing order #{$order->bjs_id}", $context);
+
+        $remainingCount = $redisData['requested'] - $redisData['processed'];
+
+        switch ($redisData['status']) {
+            case 'inprogress':
+                $this->handleInProgressOrder($remainingCount, $context);
+                break;
+
+            case 'processing':
+                $this->handleProcessingOrder($remainingCount, $redisData, $context);
+                break;
+
+            default:
+                Log::error("Status redis is not supported yet!", $context);
+                break;
+        }
+    }
+
+    /**
+     * Handle orders in 'inprogress' status
+     */
+    private function handleInProgressOrder(int $remainingCount, array $context): void
+    {
+        if ($remainingCount <= 0) {
+            Log::info("Order completed - all requested items processed", $context);
+            $this->order->setStatusRedis('completed');
+        } else {
+            Log::info("Order continuing - {$remainingCount} items remaining to process", $context);
+            $this->order->setStatusRedis('processing');
+        }
+    }
+
+    /**
+     * TODO: add validation of timelimit 6 hours
+     * Handle orders in 'processing' status
+     */
+    private function handleProcessingOrder(int $remainingCount, array $redisData, array $context): void
+    {
+        $processingGap = $redisData['processing'] - $redisData['processed'];
+        $maxAllowedGap = 250;
+        $anomalyThreshold = 50;
+
+        $anomalyContext = array_merge($context, [
+            'failed_count' => $redisData['failed'],
+            'max_allowed_gap' => $maxAllowedGap,
+            'current_processing_gap' => $processingGap
+        ]);
+
+        if ($remainingCount <= 0) {
+            Log::info("Order completed - all requested items processed", $context);
+            $this->order->setStatusRedis('completed');
+            return;
+        }
+
+        $hasAnomaly = $processingGap >= $anomalyThreshold || $redisData['failed'] >= $anomalyThreshold;
+        if ($hasAnomaly) {
+            if ($redisData['processed'] > 0) {
+                Log::warning("Order marked as partial - anomaly detected with {$redisData['processed']} items processed", $anomalyContext);
+                $this->order->setStatusRedis('partial');
+            } else {
+                Log::warning("Order cancelled - anomaly detected before any processing", $anomalyContext);
+                $this->order->setStatusRedis('cancel');
+            }
+        }
+    }
+
+
+    // Process orders from the database and update to BJS
+    public function processOrders()
+    {
+        $context = ['process' => 'check-order'];
+        $orders = $this->order->getCurrentProccessed();
+
+        $orderCount = $orders->count();
+        Log::info("Order count: " . $orderCount, $context);
+
+        if ($orderCount == 0) {
+            return;
+        }
+    }
 }

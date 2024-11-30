@@ -49,4 +49,9 @@ class OrderService
 
         $this->redis->set("order:lists", serialize($orders));
     }
+
+    public function isBlacklisted($pkID)
+    {
+        return $this->redis->sismember("system:follow-blacklist", $pkID);
+    }
 }

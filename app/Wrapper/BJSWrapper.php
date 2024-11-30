@@ -24,14 +24,15 @@ class BJSWrapper
 
     public function fetchLikeOrder($watchlists)
     {
-        $ctx = ['process' => 'like'];
+        $context = ['process' => 'like'];
         foreach ($watchlists as $id) {
-            $ctx['processID'] = $id;
+            $context['processID'] = $id;
 
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info("Processing orders: " . count($orders), $ctx);
+            Log::info("Processing orders: " . count($orders), $context);
             foreach ($orders as $order) {
+                $ctx = $context;
                 $ctx['orderData'] = [
                     'id' => $order->id,
                     'link' => $order->link,
@@ -86,6 +87,86 @@ class BJSWrapper
                     $this->order->createAndUpdateCache($data);
 
                     Log::info('Order fetch info media success, processing next...');
+                } catch (\Throwable $th) {
+                    $this->logError($th, $ctx);
+                    continue;
+                }
+            }
+        }
+    }
+
+    public function fetchFollowOrder($watchlists)
+    {
+        $context = ['process' => 'follow'];
+        foreach ($watchlists as $id) {
+            $context['processID'] = $id;
+
+            $orders = $this->bjsService->getOrdersData($id, 0);
+
+            Log::info("Processing orders: " . count($orders), $context);
+            foreach ($orders as $order) {
+                $ctx = $context;
+                $ctx['orderData'] = [
+                    'id' => $order->id,
+                    'link' => $order->link,
+                    'requested' => $order->count,
+                ];
+                $exist = $this->order->findBJSID($order->id);
+                if ($exist) {
+                    Log::warning("Order already exist, skipping...", $ctx);
+                    continue;
+                }
+
+                try {
+                    $username = $this->bjsService->getUsername($order->link);
+                    if ($username == '') {
+                        Log::warning("Username is not valid, skipping...", $ctx);
+                        $this->bjsCli->cancelOrder($order->id);
+
+                        continue;
+                    }
+
+                    $info = $this->util->__IGGetInfo($username);
+
+                    if (! $info->found) {
+                        $this->bjsCli->cancelOrder($order->id);
+
+                        continue;
+                    }
+
+                    if ($this->order->isBlacklisted($info->pk)) {
+                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is blacklisted');
+                        $this->bjsCli->cancelOrder($order->id);
+
+                        continue;
+                    }
+
+                    if ($info->is_private) {
+                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is private');
+                        $this->bjsCli->cancelOrder($order->id);
+                        continue;
+                    }
+
+                    $start = $info->follower_count;
+                    $this->bjsCli->setStartCount($order->id, $start);
+                    $this->bjsCli->changeStatus($order->id, 'inprogress');
+
+                    $requested = $order->count;
+                    $data = [
+                        'bjs_id' => $order->id,
+                        'kind' => 'follow',
+                        'username' => $username,
+                        'instagram_user_id' => $info->pk,
+                        'target' => $order->link,
+                        'start_count' => $start,
+                        'requested' => $requested,
+                        'margin_request' => UtilClient::withOrderMargin($requested),
+                        'status' => 'inprogress',
+                        'status_bjs' => 'inprogress',
+                        "source" => "bjs"
+                    ];
+                    $this->order->createAndUpdateCache($data);
+                    Log::info('Order fetch info success, processing next...');
                 } catch (\Throwable $th) {
                     $this->logError($th, $ctx);
                     continue;

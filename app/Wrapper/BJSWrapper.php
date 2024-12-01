@@ -8,6 +8,7 @@ use App\Services\BJSService;
 use App\Services\OrderService;
 use App\Traits\LoggerTrait;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class BJSWrapper
 {
@@ -31,7 +32,7 @@ class BJSWrapper
 
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info('Processing orders: '.count($orders), $context);
+            Log::info('Processing orders: ' . count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -107,7 +108,7 @@ class BJSWrapper
 
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info('Processing orders: '.count($orders), $context);
+            Log::info('Processing orders: ' . count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -140,14 +141,14 @@ class BJSWrapper
                     }
 
                     if ($this->order->isBlacklisted($info->pk)) {
-                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is blacklisted');
+                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is blacklisted');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
                     }
 
                     if ($info->is_private) {
-                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is private');
+                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is private');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
@@ -188,7 +189,7 @@ class BJSWrapper
         $orders = $this->order->getCachedOrders();
 
         $orderCount = $orders->count();
-        Log::info('Cached order count: '.$orderCount, $context);
+        Log::info('Cached order count: ' . $orderCount, $context);
 
         if ($orderCount == 0) {
             return;

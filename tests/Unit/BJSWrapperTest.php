@@ -101,7 +101,21 @@ class BJSWrapperTest extends TestCase
         $this->assertTrue(true);
     }
 
+    /**
+     * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_resync_orders
+     */
+    public function test_resync_orders(): void
+    {
+        $this->markTestSkipped('Remove this line to run the test.');
 
+        $this->wrapper->bjsService->auth();
+        // Execute the actual fetch
+        $this->wrapper->resyncOrders();
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
 
     /**
      * To run this test:
@@ -121,6 +135,7 @@ class BJSWrapperTest extends TestCase
         $this->wrapper->fetchFollowOrder($followWatchlists);
         $this->wrapper->processCachedOrders();
         $this->wrapper->processOrders();
+        $this->wrapper->resyncOrders();
 
         // Test passes if no exceptions are thrown
         $this->assertTrue(true);

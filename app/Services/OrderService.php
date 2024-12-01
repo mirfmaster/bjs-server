@@ -137,4 +137,12 @@ class OrderService
     {
         $this->redis->set("order:$this->id:status", $status);
     }
+
+    public function getOutOfSyncOrders()
+    {
+        return Order::query()
+            ->whereColumn('status', '!=', 'status_bjs')
+            ->where('status', '!=', 'pending')
+            ->get();
+    }
 }

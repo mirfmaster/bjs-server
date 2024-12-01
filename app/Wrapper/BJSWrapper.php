@@ -487,4 +487,90 @@ class BJSWrapper
             'remaining_updated' => null,
         ];
     }
+
+    public function resyncOrders()
+    {
+        $baseContext = ['process' => 'resync-orders'];
+        $orders = $this->order->getOutOfSyncOrders();
+
+        Log::info("Found {$orders->count()} orders out of sync", $baseContext);
+
+        if ($orders->count() == 0) {
+            return;
+        }
+
+        foreach ($orders as $order) {
+            $this->order->setOrderID($order->id);
+            $redisData = $this->order->getOrderRedisKeys();
+
+            $context = array_merge($baseContext, [
+                'order_id' => $order->id,
+                'bjs_id' => $order->bjs_id,
+                'redis_data' => $redisData,
+                'local_status' => $order->status,
+                'bjs_status' => $order->status_bjs
+            ]);
+
+            try {
+                Log::info("Attempting to resync order status", $context);
+
+                // If Redis status doesn't match local status, prioritize Redis
+                if ($redisData['status'] !== $order->status) {
+                    $targetStatus = $redisData['status'];
+                    Log::info("Redis status differs from local status - using Redis status", array_merge($context, [
+                        'redis_status' => $redisData['status']
+                    ]));
+                } else {
+                    $targetStatus = $order->status;
+                }
+
+                $remainingCount = $redisData['requested'] - $redisData['processed'];
+                $updateResult = $this->resyncOrderStatus($order, $targetStatus, $remainingCount);
+
+                Log::info("Resync attempt completed", array_merge($context, [
+                    'target_status' => $targetStatus,
+                    'update_result' => $updateResult
+                ]));
+            } catch (\Throwable $th) {
+                $this->logError($th, $context);
+                continue;
+            }
+        }
+    }
+
+    private function resyncOrderStatus($order, string $targetStatus, int $remainingCount): array
+    {
+        $updateResult = [
+            'model_updated' => false,
+            'bjs_status_updated' => false,
+            'remaining_updated' => false
+        ];
+
+        switch ($targetStatus) {
+            case 'processing':
+                $updateResult = $this->updateToProcessing($order, $remainingCount);
+                break;
+
+            case 'completed':
+                $updateResult = $this->updateToCompleted($order, $remainingCount);
+                break;
+
+            case 'partial':
+                $updateResult = $this->updateToPartial($order, $remainingCount);
+                break;
+
+            case 'cancel':
+                $updateResult = $this->updateToCancelled($order);
+                break;
+
+            default:
+                Log::warning("Unsupported target status for resync: {$targetStatus}", [
+                    'order_id' => $order->id,
+                    'bjs_id' => $order->bjs_id
+                ]);
+                break;
+        }
+
+        return $updateResult;
+    }
 }

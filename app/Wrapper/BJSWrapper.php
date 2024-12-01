@@ -213,11 +213,11 @@ class BJSWrapper
 
         switch ($redisData['status']) {
             case 'inprogress':
-                $this->handleInProgressOrder($remainingCount, $context);
+                $this->handleInProgressCache($remainingCount, $context);
                 break;
 
             case 'processing':
-                $this->handleProcessingOrder($remainingCount, $redisData, $context);
+                $this->handleProcessingCache($remainingCount, $redisData, $context);
                 break;
 
             default:
@@ -227,9 +227,11 @@ class BJSWrapper
     }
 
     /**
+     * NOTE:
      * Handle orders in 'inprogress' status
+     * Status changes: inprogress -> completed, processing
      */
-    private function handleInProgressOrder(int $remainingCount, array $context): void
+    private function handleInProgressCache(int $remainingCount, array $context): void
     {
         if ($remainingCount <= 0) {
             Log::info("Order completed - all requested items processed", $context);
@@ -243,8 +245,9 @@ class BJSWrapper
     /**
      * TODO: add validation of timelimit 6 hours
      * Handle orders in 'processing' status
+     * Status changes: processing -> completed, partial, cancel
      */
-    private function handleProcessingOrder(int $remainingCount, array $redisData, array $context): void
+    private function handleProcessingCache(int $remainingCount, array $redisData, array $context): void
     {
         $processingGap = $redisData['processing'] - $redisData['processed'];
         $maxAllowedGap = 250;
@@ -275,17 +278,198 @@ class BJSWrapper
     }
 
 
-    // Process orders from the database and update to BJS
-    public function processOrders()
+    // TODO:
+    // Add validation to check allow login bjs or not
+    // Create handler for only updated on db but not BJS
+    /**
+     * Process orders and sync their status between Redis and BJS service
+     * Status flow: inprogress -> processing, completed, partial, cancel
+     */
+    public function processOrders(): void
     {
-        $context = ['process' => 'check-order'];
-        $orders = $this->order->getCurrentProccessed();
+        $baseContext = ['process' => 'check-order'];
+        $orders = $this->order->getOrders();
 
-        $orderCount = $orders->count();
-        Log::info("Order count: " . $orderCount, $context);
+        Log::info("Found {$orders->count()} orders to process", $baseContext);
 
-        if ($orderCount == 0) {
+        if ($orders->count() == 0) {
             return;
         }
+
+        foreach ($orders as $order) {
+            $this->processOrderStatus($order, $baseContext);
+        }
+    }
+
+    /**
+     * Process individual order status updates
+     */
+    private function processOrderStatus($order, array $baseContext): void
+    {
+        $this->order->setOrderID($order->id);
+        $redisData = $this->order->getOrderRedisKeys();
+
+        $context = array_merge($baseContext, [
+            'order_id' => $order->id,
+            'bjs_id' => $order->bjs_id,
+            'redis_data' => $redisData
+        ]);
+
+        Log::info("Processing order #{$order->bjs_id}", $context);
+
+        $remainingCount = $redisData['requested'] - $redisData['processed'];
+
+        switch ($order->status) {
+            case 'inprogress':
+                $this->handleInProgressOrder($order, $redisData['status'], $remainingCount, $context);
+                break;
+
+            case 'processing':
+                $this->handleProcessingOrder($order, $redisData['status'], $remainingCount, $context);
+                break;
+
+            default:
+                Log::error("Unsupported Redis status encountered", $context);
+                break;
+        }
+    }
+
+    /**
+     * Handle orders in 'inprogress' status
+     */
+    private function handleInProgressOrder($order, string $redisStatus, int $remainingCount, array $context): void
+    {
+        $updateResult = [
+            'model_updated' => false,
+            'bjs_status_updated' => false,
+            'remaining_updated' => false
+        ];
+
+        switch ($redisStatus) {
+            case 'processing':
+                $updateResult = $this->updateToProcessing($order, $remainingCount);
+                break;
+
+            case 'completed':
+                $updateResult = $this->updateToCompleted($order, $remainingCount);
+                break;
+
+            case 'partial':
+                $updateResult = $this->updateToPartial($order, $remainingCount);
+                break;
+
+            case 'cancel':
+                $updateResult = $this->updateToCancelled($order);
+                break;
+        }
+
+        Log::info("Updated order status from {$order->status} to {$redisStatus}", array_merge($context, [
+            'update_model' => $updateResult['model_updated'],
+            'update_status_bjs' => $updateResult['bjs_status_updated'],
+            'set_remaining' => $updateResult['remaining_updated']
+        ]));
+    }
+
+    /**
+     * Handle orders in 'processing' status
+     */
+    private function handleProcessingOrder($order, string $redisStatus, int $remainingCount, array $context): void
+    {
+        if ($redisStatus === 'processing') {
+            $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
+            Log::info("Updated remaining count for processing order", array_merge($context, [
+                'update_status_bjs' => $remainingUpdated
+            ]));
+        }
+    }
+
+    /**
+     * Update order to processing status
+     */
+    private function updateToProcessing($order, int $remainingCount): array
+    {
+        $order->processed = $order->getOrderRedisKeys()['processed'];
+        $order->status = 'processing';
+        $order->start_at = now();
+
+        $bjsStatus = $this->bjsCli->changeStatus($order->bjs_id, 'processing');
+        if ($bjsStatus) {
+            $order->status_bjs = 'processing';
+        }
+
+        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
+
+        return [
+            'model_updated' => $order->save(),
+            'bjs_status_updated' => $bjsStatus,
+            'remaining_updated' => $remainingUpdated
+        ];
+    }
+
+    /**
+     * Update order to completed status
+     */
+    private function updateToCompleted($order, int $remainingCount): array
+    {
+        $order->processed = $order->getOrderRedisKeys()['processed'];
+        $order->status = 'completed';
+        $order->start_at = $order->start_at ?? now();
+        $order->end_at = now();
+
+        $bjsStatus = $this->bjsCli->changeStatus($order->bjs_id, 'completed');
+        if ($bjsStatus) {
+            $order->status_bjs = 'completed';
+        }
+
+        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
+
+        return [
+            'model_updated' => $order->save(),
+            'bjs_status_updated' => $bjsStatus,
+            'remaining_updated' => $remainingUpdated
+        ];
+    }
+
+    /**
+     * Update order to partial status
+     */
+    private function updateToPartial($order, int $remainingCount): array
+    {
+        $order->status = 'partial';
+        $order->start_at = $order->start_at ?? now();
+        $order->end_at = now();
+        $order->partial_count = $remainingCount;
+
+        $bjsStatus = $this->bjsCli->setPartial($order->bjs_id, $remainingCount);
+        if ($bjsStatus) {
+            $order->status_bjs = 'partial';
+        }
+
+        return [
+            'model_updated' => $order->save(),
+            'bjs_status_updated' => $bjsStatus,
+            'remaining_updated' => null
+        ];
+    }
+
+    /**
+     * Update order to cancelled status
+     */
+    private function updateToCancelled($order): array
+    {
+        $order->status = 'cancel';
+        $order->start_at = $order->start_at ?? now();
+        $order->end_at = now();
+
+        $bjsStatus = $this->bjsCli->cancelOrder($order->bjs_id);
+        if ($bjsStatus) {
+            $order->status_bjs = 'cancel';
+        }
+
+        return [
+            'model_updated' => $order->save(),
+            'bjs_status_updated' => $bjsStatus,
+            'remaining_updated' => null
+        ];
     }
 }

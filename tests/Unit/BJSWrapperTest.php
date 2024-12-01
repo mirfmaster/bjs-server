@@ -77,12 +77,30 @@ class BJSWrapperTest extends TestCase
     {
         $this->markTestSkipped('Remove this line to run the test.');
 
+        $this->wrapper->bjsService->auth();
         // Execute the actual fetch
         $this->wrapper->processCachedOrders();
 
         // Test passes if no exceptions are thrown
         $this->assertTrue(true);
     }
+
+    /**
+     * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_process_orders
+     */
+    public function test_process_orders(): void
+    {
+        $this->markTestSkipped('Remove this line to run the test.');
+
+        $this->wrapper->bjsService->auth();
+        // Execute the actual fetch
+        $this->wrapper->processOrders();
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
+
 
 
     /**
@@ -101,6 +119,8 @@ class BJSWrapperTest extends TestCase
         // Execute both fetches
         $this->wrapper->fetchLikeOrder($likeWatchlists);
         $this->wrapper->fetchFollowOrder($followWatchlists);
+        $this->wrapper->processCachedOrders();
+        $this->wrapper->processOrders();
 
         // Test passes if no exceptions are thrown
         $this->assertTrue(true);

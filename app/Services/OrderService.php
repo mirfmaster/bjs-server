@@ -91,16 +91,20 @@ class OrderService
         return $this->redis->del($keys);
     }
 
-
-    public function updateCache()
+    public function getOrders()
     {
-        $orders = $this->order
+        return $this->order
             ->whereIn('status', ['inprogress', 'processing'])
             ->orderBy('priority', 'desc')
             ->orderByRaw("array_position(ARRAY['like', 'comment', 'follow'], kind)")
             ->orderBy('created_at', 'asc')
             ->limit(20)
             ->get();
+    }
+
+    public function updateCache()
+    {
+        $orders = $this->getOrders();
 
         $this->redis->set("order:lists", serialize($orders));
     }

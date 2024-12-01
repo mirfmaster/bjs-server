@@ -201,6 +201,22 @@ class BJSClient
         }
     }
 
+    public function setPartial($id, $remains)
+    {
+        try {
+            return $this->cliXML->post('/admin/api/orders/set-partial/' . $id, [
+                'form_params' => [
+                    'remains' => $remains,
+                ],
+            ]);
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return false;
+        }
+    }
+
+
     public function cancelOrder($id)
     {
         try {

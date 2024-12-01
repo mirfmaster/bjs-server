@@ -3,8 +3,8 @@
 namespace App\Wrapper;
 
 use App\Client\BJSClient;
-use App\Services\BJSService;
 use App\Client\UtilClient;
+use App\Services\BJSService;
 use App\Services\OrderService;
 use App\Traits\LoggerTrait;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +14,7 @@ class BJSWrapper
     use LoggerTrait;
 
     private BJSClient $bjsCli;
+
     public function __construct(
         public BJSService $bjsService,
         public OrderService $order,
@@ -30,7 +31,7 @@ class BJSWrapper
 
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info("Processing orders: " . count($orders), $context);
+            Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -40,15 +41,17 @@ class BJSWrapper
                 ];
                 $exist = $this->order->findBJSID($order->id);
                 if ($exist) {
-                    Log::warning("Order already exist, skipping...", $ctx);
+                    Log::warning('Order already exist, skipping...', $ctx);
+
                     continue;
                 }
 
                 try {
                     $shortcode = $this->util->getMediaCode($order->link);
                     if ($shortcode === null) {
-                        Log::warning("Shortcode is not valid, skipping...", $ctx);
+                        Log::warning('Shortcode is not valid, skipping...', $ctx);
                         $this->bjsCli->cancelOrder($order->id);
+
                         continue;
                     }
 
@@ -57,14 +60,14 @@ class BJSWrapper
                     unset($info->data);
 
                     if (! $info->found || $info->owner_is_private) {
-                        Log::warning("Unable to fetch target data, skipping...", $ctx);
+                        Log::warning('Unable to fetch target data, skipping...', $ctx);
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
                     }
 
                     $ctx['info'] = $info;
-                    Log::info("Succesfully fetching info, setting start count and changing to inprogress", $ctx);
+                    Log::info('Succesfully fetching info, setting start count and changing to inprogress', $ctx);
 
                     $this->bjsCli->setStartCount($order->id, $info->like_count);
                     sleep(1);
@@ -82,13 +85,14 @@ class BJSWrapper
                         'margin_request' => UtilClient::withOrderMargin($order->count),
                         'status' => 'inprogress',
                         'status_bjs' => 'inprogress',
-                        "source" => "bjs"
+                        'source' => 'bjs',
                     ];
                     $this->order->createAndUpdateCache($data);
 
                     Log::info('Order fetch info media success, processing next...');
                 } catch (\Throwable $th) {
                     $this->logError($th, $ctx);
+
                     continue;
                 }
             }
@@ -103,7 +107,7 @@ class BJSWrapper
 
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info("Processing orders: " . count($orders), $context);
+            Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -113,14 +117,15 @@ class BJSWrapper
                 ];
                 $exist = $this->order->findBJSID($order->id);
                 if ($exist) {
-                    Log::warning("Order already exist, skipping...", $ctx);
+                    Log::warning('Order already exist, skipping...', $ctx);
+
                     continue;
                 }
 
                 try {
                     $username = $this->bjsService->getUsername($order->link);
                     if ($username == '') {
-                        Log::warning("Username is not valid, skipping...", $ctx);
+                        Log::warning('Username is not valid, skipping...', $ctx);
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
@@ -135,15 +140,16 @@ class BJSWrapper
                     }
 
                     if ($this->order->isBlacklisted($info->pk)) {
-                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is blacklisted');
+                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is blacklisted');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
                     }
 
                     if ($info->is_private) {
-                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is private');
+                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is private');
                         $this->bjsCli->cancelOrder($order->id);
+
                         continue;
                     }
 
@@ -163,12 +169,13 @@ class BJSWrapper
                         'margin_request' => UtilClient::withOrderMargin($requested),
                         'status' => 'inprogress',
                         'status_bjs' => 'inprogress',
-                        "source" => "bjs"
+                        'source' => 'bjs',
                     ];
                     $this->order->createAndUpdateCache($data);
                     Log::info('Order fetch info success, processing next...');
                 } catch (\Throwable $th) {
                     $this->logError($th, $ctx);
+
                     continue;
                 }
             }
@@ -181,7 +188,7 @@ class BJSWrapper
         $orders = $this->order->getCachedOrders();
 
         $orderCount = $orders->count();
-        Log::info("Cached order count: " . $orderCount, $context);
+        Log::info('Cached order count: '.$orderCount, $context);
 
         if ($orderCount == 0) {
             return;
@@ -191,7 +198,6 @@ class BJSWrapper
             $this->processCachedOrder($o, $context);
         }
     }
-
 
     /**
      * Process individual order and update its status
@@ -204,7 +210,7 @@ class BJSWrapper
         $context = array_merge($baseContext, [
             'order_id' => $order->id,
             'bjs_id' => $order->bjs_id,
-            'redis_data' => $redisData
+            'redis_data' => $redisData,
         ]);
 
         Log::info("Processing order #{$order->bjs_id}", $context);
@@ -221,7 +227,7 @@ class BJSWrapper
                 break;
 
             default:
-                Log::error("Status redis is not supported yet!", $context);
+                Log::error('Status redis is not supported yet!', $context);
                 break;
         }
     }
@@ -234,7 +240,7 @@ class BJSWrapper
     private function handleInProgressCache(int $remainingCount, array $context): void
     {
         if ($remainingCount <= 0) {
-            Log::info("Order completed - all requested items processed", $context);
+            Log::info('Order completed - all requested items processed', $context);
             $this->order->setStatusRedis('completed');
         } else {
             Log::info("Order continuing - {$remainingCount} items remaining to process", $context);
@@ -256,12 +262,13 @@ class BJSWrapper
         $anomalyContext = array_merge($context, [
             'failed_count' => $redisData['failed'],
             'max_allowed_gap' => $maxAllowedGap,
-            'current_processing_gap' => $processingGap
+            'current_processing_gap' => $processingGap,
         ]);
 
         if ($remainingCount <= 0) {
-            Log::info("Order completed - all requested items processed", $context);
+            Log::info('Order completed - all requested items processed', $context);
             $this->order->setStatusRedis('completed');
+
             return;
         }
 
@@ -271,12 +278,11 @@ class BJSWrapper
                 Log::warning("Order marked as partial - anomaly detected with {$redisData['processed']} items processed", $anomalyContext);
                 $this->order->setStatusRedis('partial');
             } else {
-                Log::warning("Order cancelled - anomaly detected before any processing", $anomalyContext);
+                Log::warning('Order cancelled - anomaly detected before any processing', $anomalyContext);
                 $this->order->setStatusRedis('cancel');
             }
         }
     }
-
 
     // TODO:
     // Add validation to check allow login bjs or not
@@ -287,6 +293,7 @@ class BJSWrapper
      */
     public function processOrders(): void
     {
+
         $baseContext = ['process' => 'check-order'];
         $orders = $this->order->getOrders();
 
@@ -312,7 +319,7 @@ class BJSWrapper
         $context = array_merge($baseContext, [
             'order_id' => $order->id,
             'bjs_id' => $order->bjs_id,
-            'redis_data' => $redisData
+            'redis_data' => $redisData,
         ]);
 
         Log::info("Processing order #{$order->bjs_id}", $context);
@@ -329,7 +336,7 @@ class BJSWrapper
                 break;
 
             default:
-                Log::error("Unsupported Redis status encountered", $context);
+                Log::error('Unsupported Redis status encountered', $context);
                 break;
         }
     }
@@ -342,7 +349,7 @@ class BJSWrapper
         $updateResult = [
             'model_updated' => false,
             'bjs_status_updated' => false,
-            'remaining_updated' => false
+            'remaining_updated' => false,
         ];
 
         switch ($redisStatus) {
@@ -366,7 +373,7 @@ class BJSWrapper
         Log::info("Updated order status from {$order->status} to {$redisStatus}", array_merge($context, [
             'update_model' => $updateResult['model_updated'],
             'update_status_bjs' => $updateResult['bjs_status_updated'],
-            'set_remaining' => $updateResult['remaining_updated']
+            'set_remaining' => $updateResult['remaining_updated'],
         ]));
     }
 
@@ -377,8 +384,8 @@ class BJSWrapper
     {
         if ($redisStatus === 'processing') {
             $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
-            Log::info("Updated remaining count for processing order", array_merge($context, [
-                'update_status_bjs' => $remainingUpdated
+            Log::info('Updated remaining count for processing order', array_merge($context, [
+                'update_status_bjs' => $remainingUpdated,
             ]));
         }
     }
@@ -402,7 +409,7 @@ class BJSWrapper
         return [
             'model_updated' => $order->save(),
             'bjs_status_updated' => $bjsStatus,
-            'remaining_updated' => $remainingUpdated
+            'remaining_updated' => $remainingUpdated,
         ];
     }
 
@@ -426,7 +433,7 @@ class BJSWrapper
         return [
             'model_updated' => $order->save(),
             'bjs_status_updated' => $bjsStatus,
-            'remaining_updated' => $remainingUpdated
+            'remaining_updated' => $remainingUpdated,
         ];
     }
 
@@ -448,7 +455,7 @@ class BJSWrapper
         return [
             'model_updated' => $order->save(),
             'bjs_status_updated' => $bjsStatus,
-            'remaining_updated' => null
+            'remaining_updated' => null,
         ];
     }
 
@@ -469,7 +476,7 @@ class BJSWrapper
         return [
             'model_updated' => $order->save(),
             'bjs_status_updated' => $bjsStatus,
-            'remaining_updated' => null
+            'remaining_updated' => null,
         ];
     }
 }

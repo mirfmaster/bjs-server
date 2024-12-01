@@ -18,4 +18,4 @@ jobs:
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
           key: ${{ secrets.PRIVATE_KEY }}
-          script: cd /var/www/html/bjs/bjs-server && ./.github/deploy.sh
+          script: cd /var/www/html/bjs/bjs-server && ./.github/workflows/deploy.sh

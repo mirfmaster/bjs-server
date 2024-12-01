@@ -2,8 +2,9 @@ name: deployment
 
 on:
   push:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+' # Matches semantic versioning tags like 0.0.1
+    branches: [main]
+    # tags:
+      # - '[0-9]+.[0-9]+.[0-9]+' # Matches semantic versioning tags like 0.0.1
 
 jobs:
   deploy_prod:
@@ -16,4 +17,5 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
-          script: cd /var/www/html/bjs-server && ./.github/deploy.sh
+          key: ${{ secrets.PRIVATE_KEY }}
+          script: cd /var/www/html/bjs/bjs-server && ./.github/deploy.sh

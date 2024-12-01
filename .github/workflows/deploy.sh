@@ -12,13 +12,13 @@ git fetch && git pull
 
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
-# Recreate cache
-php artisan optimize
-php artisan queue:restart
-
 # Run database migrations
 # NOTE: currently disabled
 php artisan migrate --force
+
+# Recreate cache
+php artisan optimize
+php artisan queue:restart
 
 # Exit maintenance mode
 php artisan up

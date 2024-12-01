@@ -284,26 +284,33 @@ class BJSWrapper
         }
     }
 
-    // TODO:
-    // Add validation to check allow login bjs or not
-    // Create handler for only updated on db but not BJS
     /**
      * Process orders and sync their status between Redis and BJS service
      * Status flow: inprogress -> processing, completed, partial, cancel
      */
     public function processOrders(): void
     {
-
-        $baseContext = ['process' => 'check-order'];
+        $stateLogin = (bool) Redis::get('system:allow-login-bjs');
+        $baseContext = [
+            'process' => 'check-order',
+            'allow_login_bjs' => $stateLogin,
+        ];
         $orders = $this->order->getOrders();
 
         Log::info("Found {$orders->count()} orders to process", $baseContext);
 
-        if ($orders->count() == 0) {
+        if ($orders->count() == 0 || $stateLogin == false) {
             return;
         }
 
         foreach ($orders as $order) {
+            $stateLogin = (bool) Redis::get('system:allow-login-bjs');
+            $baseContext['allow_login_bjs'] = $stateLogin;
+            if ($stateLogin == false) {
+                Log::info('State login is false, skipping task');
+
+                return;
+            }
             $this->processOrderStatus($order, $baseContext);
         }
     }

@@ -15,7 +15,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->job(new GetUserIndofoll)->daily();
-        $schedule->job(new SyncBJSOrders)->everyMinute()->withoutOverlapping();
+        $schedule->job(new SyncBJSOrders)->everyThreeMinutes()->withoutOverlapping();
     }
 
     /**

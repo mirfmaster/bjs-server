@@ -3,7 +3,7 @@ services:
         image: postgres:17-alpine
         container_name: bjs_pgsql
         hostname: postgres
-        restart: unless-stopped
+        # restart: unless-stopped
         ports:
             - 5432:5432
         volumes:

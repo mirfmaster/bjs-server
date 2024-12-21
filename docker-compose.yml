@@ -7,11 +7,11 @@ services:
         ports:
             - 5432:5432
         volumes:
-            - pgsql_data:/var/lib/postgresql/data
+            - pgsql_bjs:/var/lib/postgresql/data
         environment:
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: securedb
-            POSTGRES_DB: bjsdb
+            POSTGRES_DB: bjs_php
         command: ["postgres", "-c", "wal_level=logical"]
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U postgres -d bjsdb"]
@@ -27,7 +27,7 @@ services:
         ports:
             - 6379:6379
         volumes:
-            - redis_data:/data
+            - redis_bjs:/data
         command: redis-server --appendonly yes
         healthcheck:
             test: ["CMD", "redis-cli", "ping"]
@@ -36,7 +36,7 @@ services:
             retries: 3
 
 volumes:
-    pgsql_data:
+    pgsql_bjs:
         driver: local
-    redis_data:
+    redis_bjs:
         driver: local

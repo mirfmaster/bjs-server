@@ -45,6 +45,31 @@ class HomeController extends Controller
             ->whereColumn('status', '!=', 'status_bjs')
             ->count();
 
+        $allDevices = Redis::smembers('devices:all');
+        // Count workers by mode
+        $workerModeCount = 0;
+        $loginModeCount = 0;
+
+        // Count inactive devices (>6 hours)
+        $inactiveCount = 0;
+        $sixHoursAgo = Carbon::now()->subHours(6)->unix();
+
+        foreach ($allDevices as $device) {
+            // Check mode counts
+            $mode = Redis::get("device:mode:$device");
+            if ($mode === 'worker') {
+                $workerModeCount++;
+            } elseif ($mode === 'login') {
+                $loginModeCount++;
+            }
+
+            // Check last activity
+            $lastActivity = Redis::get("device:last-activity:$device");
+            if ($lastActivity && intval($lastActivity) < $sixHoursAgo) {
+                $inactiveCount++;
+            }
+        }
+
         return view('pages.dashboard', [
             'workerCounter' => $workerCounters,
             'activeCounter' => $activeWorkerCounter,
@@ -61,6 +86,15 @@ class HomeController extends Controller
                 'canceled' => $orderCanceled,
                 'partial' => $orderPartialled,
                 'out_sync' => $mismatchedOrders,
+            ],
+
+            // Devices Section
+            'devices' => [
+                'all' => count($allDevices),
+                'active' => count($allDevices) - $inactiveCount,
+                'dead' => $inactiveCount,
+                'worker' => $workerModeCount,
+                'login' => $loginModeCount,
             ],
 
         ]);

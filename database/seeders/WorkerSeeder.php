@@ -9,67 +9,6 @@ use Illuminate\Support\Facades\DB;
 class WorkerSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
-     *
-     * @return void
-     */
-    public function run()
-    {
-        $csvFile = storage_path('app/assets/dev/workers.csv');
-
-        if (! file_exists($csvFile)) {
-            throw new \Exception('CSV file not found at: '.$csvFile);
-        }
-
-        // Open the CSV file
-        $file = fopen($csvFile, 'r');
-
-        // Skip the header row
-        fgetcsv($file);
-
-        // Begin transaction for better performance
-        DB::beginTransaction();
-
-        try {
-            while (($data = fgetcsv($file)) !== false) {
-                $password = $data[2];
-                if (strlen($password) > 100) {
-                    continue;
-                }
-                Worker::query()->create([
-                    'id' => $this->convertToInt($data[0]),
-                    'username' => $data[1],
-                    'password' => $password,
-                    'status' => $data[3],
-                    'followers_count' => $this->convertToInt($data[4]),
-                    'following_count' => $this->convertToInt($data[5]),
-                    'media_count' => $this->convertToInt($data[6]),
-                    'pk_id' => $data[7],
-                    'is_max_following_error' => $this->convertToBoolean($data[8]),
-                    'is_probably_bot' => $this->convertToBoolean($data[9]),
-                    'is_verified_email' => $this->convertToBoolean($data[10]),
-                    'has_profile_picture' => $this->convertToBoolean($data[11]),
-                    'last_access' => $this->convertToDateTime($data[12]),
-                    'created_at' => $this->convertToDateTime($data[13]),
-                    'updated_at' => $this->convertToDateTime($data[14]),
-                    'code' => $data[15],
-                    'is_verified' => $this->convertToBoolean($data[16]),
-                    'on_work' => $this->convertToBoolean($data[17]),
-                    'last_work' => $this->convertToDateTime($data[18]),
-                ]);
-            }
-
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-
-        // Close the file
-        fclose($file);
-    }
-
-    /**
      * Convert string boolean values to actual boolean
      *
      * @param  string|null  $value
@@ -115,6 +54,114 @@ class WorkerSeeder extends Seeder
             return date('Y-m-d H:i:s', strtotime($value));
         } catch (\Exception $e) {
             return null;
+        }
+    }
+
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        // $path = storage_path('app/assets/dev/workers.csv'); // Dev asset
+
+        // Check if workers already exist
+        // $workerCount = Worker::count();
+        // if ($workerCount > 0) {
+        //     $this->command->error("Workers table is not empty ({$workerCount} records found). Please truncate the table first or use --force option.");
+        //
+        //     return;
+        // }
+
+        $filename = 'workers.csv';
+        $path = storage_path('app/assets/prod/'.$filename);
+
+        if (! file_exists($path)) {
+            $this->command->error("CSV file not found: {$path}");
+
+            return;
+        }
+
+        $this->command->info("Starting to import workers from {$filename}...");
+
+        // Begin transaction
+        DB::beginTransaction();
+
+        try {
+            // Truncate the workers table
+            $this->command->info('Truncating workers table...');
+            Worker::truncate();
+
+            // Read CSV file
+            $handle = fopen($path, 'r');
+            $header = fgetcsv($handle, 0, '|'); // Get headers
+
+            if (! $header) {
+                throw new \Exception('Unable to read CSV headers');
+            }
+
+            // Convert headers to lowercase and trim
+            $header = array_map(function ($h) {
+                return trim(strtolower($h));
+            }, $header);
+
+            $batch = [];
+            $batchSize = 1000;
+            $totalProcessed = 0;
+
+            while (($data = fgetcsv($handle, 0, '|')) !== false) {
+                if (count($data) !== count($header)) {
+                    continue; // Skip malformed rows
+                }
+
+                $row = array_combine($header, $data);
+
+                // Prepare the worker data with improved type casting
+                $worker = [
+                    'username' => $row['username'] ?? null,
+                    'password' => $row['password'] ?? null,
+                    'status' => $row['status'] ?? null,
+                    'followers_count' => $this->convertToInt($row['followers_count'] ?? null),
+                    'following_count' => $this->convertToInt($row['following_count'] ?? null),
+                    'media_count' => $this->convertToInt($row['media_count'] ?? null),
+                    'pk_id' => $row['pk_id'] ?? null,
+                    'is_max_following_error' => $this->convertToBoolean($row['is_max_following_error'] ?? null),
+                    'is_probably_bot' => $this->convertToBoolean($row['is_probably_bot'] ?? null),
+                    'is_verified_email' => $this->convertToBoolean($row['is_verified_email'] ?? null),
+                    'has_profile_picture' => $this->convertToBoolean($row['has_profile_picture'] ?? null),
+                    'last_access' => $this->convertToDateTime($row['last_access'] ?? null),
+                    'code' => $row['code'] ?? null,
+                    'is_verified' => $this->convertToBoolean($row['is_verified'] ?? null),
+                    'on_work' => $this->convertToBoolean($row['on_work'] ?? null),
+                    'last_work' => $this->convertToDateTime($row['last_work'] ?? null),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                $batch[] = $worker;
+                $totalProcessed++;
+
+                // Insert batch when size is reached
+                if (count($batch) >= $batchSize) {
+                    Worker::insert($batch);
+                    $batch = [];
+                    $this->command->info("Processed {$totalProcessed} workers...");
+                }
+            }
+
+            // Insert remaining records
+            if (! empty($batch)) {
+                Worker::insert($batch);
+            }
+
+            fclose($handle);
+            DB::commit();
+
+            $this->command->info("Successfully imported {$totalProcessed} workers.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->command->error('Error importing workers: '.$e->getMessage());
+            throw $e;
         }
     }
 }

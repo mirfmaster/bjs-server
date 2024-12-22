@@ -2,4 +2,6 @@
 !public/
 !assets/
 !assets/**
+assets/prod/**
+!assets/prod/.gitkeep
 !.gitignore

@@ -12,10 +12,10 @@
                                 <div class="numbers">
                                     <p class="text-sm mb-0 text-uppercase font-weight-bold">Active Workers</p>
                                     <h5 class="font-weight-bolder">
-                                        {{ $activeCounter }}({{ $loginCounter }})
+                                        {{ number_format($activeCounter) }}({{ number_format($loginCounter) }})
                                     </h5>
                                     <p class="mb-0">
-                                        <span class="text-success text-sm font-weight-bolder">{{ $workerCounter }}</span>
+                                        <span class="text-success text-sm font-weight-bolder">{{ number_format($workerCounter) }}</span>
                                         Total workers
                                     </p>
                                 </div>

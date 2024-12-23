@@ -10,11 +10,14 @@ app/Http/Controllers/Api/WorkerController.php
 app/Http/Controllers/HomeController.php
 app/Http/Controllers/OrderController.php
 app/Http/Controllers/PageController.php
+app/Http/Controllers/DeviceController.php
 
 app/Models/IF_User.php
 app/Models/Order.php
 app/Models/User.php
 app/Models/Worker.php
+app/Models/Device.php
+app/Models/DeviceStatistic.php
 
 app/Services/BJSService.php
 app/Services/OrderService.php
@@ -28,12 +31,14 @@ app/Wrapper/Util.php
 composer.json
 
 database/migrations/2024_11_17_131115_create_workers_table.php
+database/migrations/2024_12_23_132059_create_table_device.php
 
 docker-compose.yml
 
 resources/views/home.blade.php
 resources/views/layouts/app.blade.php
 resources/views/pages/dashboard.blade.php
+resources/views/pages/devices.blade.php
 resources/views/pages/orders.blade.php
 resources/views/pages/tables.blade.php
 

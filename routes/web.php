@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\OrderController;
@@ -50,6 +51,8 @@ Route::group(['middleware' => 'auth'], function () {
         ->name('orders.decrement-priority');
     Route::delete('/orders/{order}', [OrderController::class, 'destroy'])
         ->name('orders.destroy');
+    Route::get('/devices', [DeviceController::class, 'index'])->name('devices');
+    Route::post('/devices/{device}/mode', [DeviceController::class, 'updateMode'])->name('devices.mode');
 
     Route::get('/{page}', [PageController::class, 'index'])->name('page');
     Route::post('logout', [LoginController::class, 'logout'])->name('logout');

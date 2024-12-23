@@ -8,12 +8,10 @@ use Illuminate\Support\Facades\Redis;
 class OrderService
 {
     private $id;
+
     public function __construct(
-        private Order $order,
-        private Redis $redis
-    ) {
-        $this->redis = $redis;
-    }
+        private Order $order
+    ) {}
 
     public function createAndUpdateCache(array $data)
     {
@@ -31,19 +29,18 @@ class OrderService
 
     private function createRedisKey($id, $requested): void
     {
-        $this->redis->set("order:$id:status", "inprogress");
-        $this->redis->set("order:$id:processing", 0);
-        $this->redis->set("order:$id:processed", 0);
-        $this->redis->set("order:$id:failed", 0);
-        $this->redis->set("order:$id:duplicate_interaction", 0);
-        $this->redis->set("order:$id:requested", $requested);
+        Redis::set("order:$id:status", 'inprogress');
+        Redis::set("order:$id:processing", 0);
+        Redis::set("order:$id:processed", 0);
+        Redis::set("order:$id:failed", 0);
+        Redis::set("order:$id:duplicate_interaction", 0);
+        Redis::set("order:$id:requested", $requested);
     }
-
 
     /**
      * Get all Redis keys associated with an order
      *
-     * @param int $id Order ID
+     * @param  int  $id  Order ID
      * @return array Associative array of all order Redis data
      */
     public function getOrderRedisKeys(): array
@@ -54,7 +51,7 @@ class OrderService
             "order:$this->id:processed",
             "order:$this->id:failed",
             "order:$this->id:duplicate_interaction",
-            "order:$this->id:requested"
+            "order:$this->id:requested",
         ];
 
         $values = Redis::pipeline(function ($pipe) use ($keys) {
@@ -69,13 +66,14 @@ class OrderService
             'processed' => (int) $values[2],
             'failed' => (int) $values[3],
             'duplicate_interaction' => (int) $values[4],
-            'requested' => (int) $values[5]
+            'requested' => (int) $values[5],
         ];
     }
+
     /**
      * Delete all Redis keys associated with an order
      *
-     * @param int $id Order ID
+     * @param  int  $id  Order ID
      * @return int Number of keys deleted
      */
     public function deleteOrderRedisKeys(int $id): int
@@ -85,16 +83,16 @@ class OrderService
             "order:$id:processing",
             "order:$id:processed",
             "order:$id:duplicate_interaction",
-            "order:$id:requested"
+            "order:$id:requested",
         ];
 
-        return $this->redis->del($keys);
+        return Redis::del($keys);
     }
 
     public function getOrders()
     {
         return $this->order
-            ->whereIn('status', ['inprogress', 'processing'])
+            ->whereIn('status', ['processing'])
             ->orderBy('priority', 'desc')
             ->orderByRaw("array_position(ARRAY['like', 'comment', 'follow'], kind)")
             ->orderBy('created_at', 'asc')
@@ -106,17 +104,19 @@ class OrderService
     {
         $orders = $this->getOrders();
 
-        $this->redis->set("order:lists", serialize($orders));
+        Redis::set('order:lists', serialize($orders));
     }
 
     public function getCachedOrders()
     {
-        return $this->redis->set("order:lists") ?? [];
+        $lists = Redis::get('order:lists');
+
+        return $lists ? unserialize($lists) : [];
     }
 
     public function isBlacklisted($pkID)
     {
-        return $this->redis->sismember("system:follow-blacklist", $pkID);
+        return Redis::sismember('system:follow-blacklist', $pkID);
     }
 
     public function getCurrentProccessed()
@@ -135,7 +135,7 @@ class OrderService
 
     public function setStatusRedis($status)
     {
-        $this->redis->set("order:$this->id:status", $status);
+        Redis::set("order:$this->id:status", $status);
     }
 
     public function getOutOfSyncOrders()

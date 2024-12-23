@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +42,15 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('/sign-in-static', [PageController::class, 'signin'])->name('sign-in-static');
     Route::get('/sign-up-static', [PageController::class, 'signup'])->name('sign-up-static');
     Route::get('/workers', [PageController::class, 'workers'])->name('workers');
+
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders');
+    Route::post('/orders/{order}/increment-priority', [OrderController::class, 'incrementPriority'])
+        ->name('orders.increment-priority');
+    Route::post('/orders/{order}/decrement-priority', [OrderController::class, 'decrementPriority'])
+        ->name('orders.decrement-priority');
+    Route::delete('/orders/{order}', [OrderController::class, 'destroy'])
+        ->name('orders.destroy');
+
     Route::get('/{page}', [PageController::class, 'index'])->name('page');
     Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 });

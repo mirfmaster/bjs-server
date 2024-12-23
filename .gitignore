@@ -17,3 +17,7 @@ yarn-error.log
 /.idea
 /.vscode
 *.cache
+
+/temp/*
+!/temp/copy_files
+

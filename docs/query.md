@@ -36,5 +36,5 @@ WHERE status LIKE 'bjs_%';
 
 update workers 
 set status ='relogin'
-where status in ('0', '[]')
+where status in ('0', '[]', 'empty_response', 'aktif_challenged')
 ```

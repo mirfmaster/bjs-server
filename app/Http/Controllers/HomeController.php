@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Device;
 use App\Models\Order;
 use App\Models\Worker;
 use Carbon\Carbon;
@@ -45,30 +46,17 @@ class HomeController extends Controller
             ->whereColumn('status', '!=', 'status_bjs')
             ->count();
 
-        $allDevices = Redis::smembers('devices:all');
-        // Count workers by mode
-        $workerModeCount = 0;
-        $loginModeCount = 0;
+        // Get all devices and count their states
+        $sixHoursAgo = Carbon::now()->subHours(6);
+        $devices = Device::query();
 
-        // Count inactive devices (>6 hours)
-        $inactiveCount = 0;
-        $sixHoursAgo = Carbon::now()->subHours(6)->unix();
+        $totalDevices = $devices->count();
+        $inactiveDevices = $devices->where('last_activity', '<', $sixHoursAgo)->count();
+        $activeDevices = $totalDevices - $inactiveDevices;
 
-        foreach ($allDevices as $device) {
-            // Check mode counts
-            $mode = Redis::get("device:mode:$device");
-            if ($mode === 'worker') {
-                $workerModeCount++;
-            } elseif ($mode === 'login') {
-                $loginModeCount++;
-            }
-
-            // Check last activity
-            $lastActivity = Redis::get("device:last-activity:$device");
-            if ($lastActivity && intval($lastActivity) < $sixHoursAgo) {
-                $inactiveCount++;
-            }
-        }
+        // Count devices by mode
+        $workerModeCount = Device::where('mode', 'worker')->count();
+        $loginModeCount = Device::where('mode', 'login')->count();
 
         return view('pages.dashboard', [
             'workerCounter' => $workerCounters,
@@ -90,13 +78,12 @@ class HomeController extends Controller
 
             // Devices Section
             'devices' => [
-                'all' => count($allDevices),
-                'active' => count($allDevices) - $inactiveCount,
-                'dead' => $inactiveCount,
+                'all' => $totalDevices,
+                'active' => $activeDevices,
+                'dead' => $inactiveDevices,
                 'worker' => $workerModeCount,
                 'login' => $loginModeCount,
             ],
-
         ]);
     }
 }

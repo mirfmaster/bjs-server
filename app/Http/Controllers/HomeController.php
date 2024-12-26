@@ -35,7 +35,7 @@ class HomeController extends Controller
             ->whereDate('created_at', Carbon::today())
             ->count();
         $loginStateBjs = Redis::get('system:bjs:login-state') ? 'True' : 'False';
-        $workerVersion = Redis::get('system:worker-version') ?? 'Not set';
+        $workerVersion = Redis::get('system:worker:version') ?? 'Not set';
 
         $orderCompleted = Order::query()->where('status', 'completed')->count();
         $orderProgress = Order::query()->where('status', 'inprogress')->count();

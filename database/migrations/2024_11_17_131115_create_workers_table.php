@@ -10,13 +10,13 @@ class CreateWorkersTable extends Migration
     {
         Schema::create('workers', function (Blueprint $table) {
             $table->id();
-            $table->string('username');
+            $table->string('username')->index();
             $table->text('password');
             $table->string('status')->nullable();
             $table->integer('followers_count')->default(0);
             $table->integer('following_count')->default(0);
             $table->integer('media_count')->default(0)->nullable();
-            $table->string('pk_id')->nullable();
+            $table->string('pk_id')->nullable()->index();
             $table->boolean('is_max_following_error')->default(false);
             $table->boolean('is_probably_bot')->default(false);
             $table->boolean('is_verified_email')->default(false);

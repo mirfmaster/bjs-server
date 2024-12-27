@@ -61,18 +61,18 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         $watchlistLike = [167];
         $watchlistFollow = [164];
 
-        $bjsCli = new BJSClient();
+        $bjsCli = new BJSClient;
 
         $bjsService = new BJSService($bjsCli);
-        $orderService = new OrderService(new Order());
+        $orderService = new OrderService(new Order);
 
-        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient());
+        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient);
 
         $bjsWrapper->bjsService->auth();
         $bjsWrapper->fetchLikeOrder($watchlistLike);
         $bjsWrapper->fetchFollowOrder($watchlistFollow);
         // TODO: remove this since the one moving the status is worker
-        $bjsWrapper->processCachedOrders();
+        // $bjsWrapper->processCachedOrders();
         $bjsWrapper->processOrders();
     }
 }

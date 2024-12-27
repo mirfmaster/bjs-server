@@ -32,7 +32,7 @@ class BJSWrapper
 
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info('Processing orders: ' . count($orders), $context);
+            Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -108,7 +108,7 @@ class BJSWrapper
 
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info('Processing orders: ' . count($orders), $context);
+            Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -141,14 +141,14 @@ class BJSWrapper
                     }
 
                     if ($this->order->isBlacklisted($info->pk)) {
-                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is blacklisted');
+                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is blacklisted');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
                     }
 
                     if ($info->is_private) {
-                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is private');
+                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is private');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
@@ -189,7 +189,7 @@ class BJSWrapper
         $orders = $this->order->getCachedOrders();
 
         $orderCount = $orders->count();
-        Log::info('Cached order count: ' . $orderCount, $context);
+        Log::info('Cached order count: '.$orderCount, $context);
 
         if ($orderCount == 0) {
             return;
@@ -301,6 +301,8 @@ class BJSWrapper
         Log::info("Found {$orders->count()} orders to process", $baseContext);
 
         if ($orders->count() == 0 || $stateLogin == false) {
+            Log::info('Skip the process due to not meet requirements');
+
             return;
         }
 
@@ -508,17 +510,17 @@ class BJSWrapper
                 'bjs_id' => $order->bjs_id,
                 'redis_data' => $redisData,
                 'local_status' => $order->status,
-                'bjs_status' => $order->status_bjs
+                'bjs_status' => $order->status_bjs,
             ]);
 
             try {
-                Log::info("Attempting to resync order status", $context);
+                Log::info('Attempting to resync order status', $context);
 
                 // If Redis status doesn't match local status, prioritize Redis
                 if ($redisData['status'] !== $order->status) {
                     $targetStatus = $redisData['status'];
-                    Log::info("Redis status differs from local status - using Redis status", array_merge($context, [
-                        'redis_status' => $redisData['status']
+                    Log::info('Redis status differs from local status - using Redis status', array_merge($context, [
+                        'redis_status' => $redisData['status'],
                     ]));
                 } else {
                     $targetStatus = $order->status;
@@ -527,12 +529,13 @@ class BJSWrapper
                 $remainingCount = $redisData['requested'] - $redisData['processed'];
                 $updateResult = $this->resyncOrderStatus($order, $targetStatus, $remainingCount);
 
-                Log::info("Resync attempt completed", array_merge($context, [
+                Log::info('Resync attempt completed', array_merge($context, [
                     'target_status' => $targetStatus,
-                    'update_result' => $updateResult
+                    'update_result' => $updateResult,
                 ]));
             } catch (\Throwable $th) {
                 $this->logError($th, $context);
+
                 continue;
             }
         }
@@ -543,7 +546,7 @@ class BJSWrapper
         $updateResult = [
             'model_updated' => false,
             'bjs_status_updated' => false,
-            'remaining_updated' => false
+            'remaining_updated' => false,
         ];
 
         switch ($targetStatus) {
@@ -566,7 +569,7 @@ class BJSWrapper
             default:
                 Log::warning("Unsupported target status for resync: {$targetStatus}", [
                     'order_id' => $order->id,
-                    'bjs_id' => $order->bjs_id
+                    'bjs_id' => $order->bjs_id,
                 ]);
                 break;
         }

@@ -29,7 +29,7 @@ class HomeController extends Controller
     {
         $workerCounters = Worker::query()->count();
         $activeWorkerCounter = Worker::query()->where('status', 'active')->count();
-        $loginRequiredCounter = Worker::query()->where('status', 'login_required')->count();
+        $loginRequiredCounter = Worker::query()->where('status', 'relogin')->count();
         $newWorkers = Worker::query()
             ->where('status', 'bjs_new_login')
             ->whereDate('created_at', Carbon::today())

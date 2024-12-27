@@ -14,11 +14,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Redis;
 
 class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     /**
      * The number of seconds after which the job's unique lock will be released.
@@ -59,16 +61,17 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         $watchlistLike = [167];
         $watchlistFollow = [164];
 
-        $bjsCli = new BJSClient;
+        $bjsCli = new BJSClient();
 
         $bjsService = new BJSService($bjsCli);
-        $orderService = new OrderService(new Order, new Redis);
+        $orderService = new OrderService(new Order());
 
-        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient);
+        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient());
 
         $bjsWrapper->bjsService->auth();
         $bjsWrapper->fetchLikeOrder($watchlistLike);
         $bjsWrapper->fetchFollowOrder($watchlistFollow);
+        // TODO: remove this since the one moving the status is worker
         $bjsWrapper->processCachedOrders();
         $bjsWrapper->processOrders();
     }

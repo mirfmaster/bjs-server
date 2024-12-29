@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Client\BJSClient;
 use App\Models\Order;
+use App\Services\BJSService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -51,19 +53,20 @@ class OrderController extends Controller
         $order->requested = $requested;
         $order->margin_request = $marginRequest;
 
+        $bjsService = new BJSService(new BJSClient());
+        $identifier = $bjsService->extractIdentifier($target);
+
         if ($type == 'follow') {
             try {
                 // TODO: handle full URL
-                $data = $this->getUserData($target);
-                $order->username = $data['username'];
+                $data = $this->getUserData($identifier);
                 $order->username = $data['username'];
             } catch (\Exception $e) {
                 return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
             }
-            $order->username = $target;
         } elseif ($type == 'like') {
             try {
-                $data = $this->getDataMedia($target);
+                $data = $this->getDataMedia($identifier);
                 $order->username = $data['owner_username'];
                 $order->media_id = $data['pk'];
             } catch (\Exception $e) {

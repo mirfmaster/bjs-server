@@ -6,6 +6,7 @@ use App\Client\BJSClient;
 use App\Models\Order;
 use App\Services\BJSService;
 use App\Services\OrderService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
@@ -177,5 +178,57 @@ class OrderController extends Controller
         $this->orderService->updateCache();
 
         return back()->with('success', 'Order deleted successfully');
+    }
+
+    public function getInfo(Request $request): JsonResponse
+    {
+        $query = Order::query();
+
+        // Validate request parameters
+        if (! $request->has('id') && ! $request->has('bjs_id')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide either id or bjs_id',
+            ], 400);
+        }
+
+        // Find order by ID or BJS ID
+        if ($request->has('id')) {
+            $order = $query->find($request->id);
+        } else {
+            $order = $query->where('bjs_id', $request->bjs_id)->first();
+        }
+
+        if (! $order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order not found',
+            ], 404);
+        }
+
+        // Get Redis state
+        $this->orderService->setOrderID($order->id);
+        $redisState = $this->orderService->getOrderRedisKeys();
+
+        // Combine order data with Redis state
+        $response = [
+            'success' => true,
+            'data' => [
+                'order' => $order,
+                'redis_state' => $redisState,
+                'stats' => [
+                    'progress_percentage' => $order->requested > 0 ?
+                        round(($order->processed / $order->requested) * 100, 2) : 0,
+                    'remaining' => max(0, $order->requested - $order->processed),
+                    'is_completed' => $order->processed >= $order->requested,
+                    'redis_processed' => (int) $redisState['processed'],
+                    'redis_processing' => (int) $redisState['processing'],
+                    'redis_failed' => (int) $redisState['failed'],
+                    'redis_duplicate' => (int) $redisState['duplicate_interaction'],
+                ],
+            ],
+        ];
+
+        return response()->json($response);
     }
 }

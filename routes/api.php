@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\WorkerController;
+use App\Http\Controllers\OrderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -21,4 +22,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::prefix('worker')->group(function () {
     Route::get('/info', [WorkerController::class, 'getInfo']);
+});
+
+// In routes/api.php
+Route::prefix('order')->group(function () {
+    Route::get('/info', [OrderController::class, 'getInfo']);
 });

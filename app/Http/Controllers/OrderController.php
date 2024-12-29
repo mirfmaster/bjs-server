@@ -52,6 +52,14 @@ class OrderController extends Controller
         $order->margin_request = $marginRequest;
 
         if ($type == 'follow') {
+            try {
+                // TODO: handle full URL
+                $data = $this->getUserData($target);
+                $order->username = $data['username'];
+                $order->username = $data['username'];
+            } catch (\Exception $e) {
+                return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
+            }
             $order->username = $target;
         } elseif ($type == 'like') {
             try {
@@ -108,6 +116,40 @@ class OrderController extends Controller
             'owner_username' => $media['owner']['username'],
             'owner_pk_id' => $media['owner']['pk_id'],
         ];
+    }
+
+    private function getUserData($username)
+    {
+        $auth = config('app.redispo_auth');
+        if ($auth === null) {
+            return;
+        }
+
+        $req = Http::withHeaders([
+            'authorization' => $auth,
+        ])
+            ->get("http://172.104.183.180:12091/v2/proxy-ig/search-by-username?username=$username");
+
+        if (! $req->ok() || (bool) $req->json('error')) {
+            throw new \Exception('Error response from server');
+        }
+
+        if (! $req->json('data.found') || ! (bool) $req->json('data.user')) {
+            throw new \Exception('User data is not foundd');
+        }
+
+        $user = $req->json('data.user');
+        $resp = [
+            'error' => true,
+            'username' => $username,
+            'pk' => $user['pk'],
+            'has_anonymous_profile_picture' => $user['has_anonymous_profile_picture'],
+            'follower_count' => $user['follower_count'],
+            'following_count' => $user['following_count'],
+            'total_media_timeline' => $user['total_media_timeline'],
+        ];
+
+        return $resp;
     }
 
     public function incrementPriority(Order $order)

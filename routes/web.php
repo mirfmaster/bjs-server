@@ -56,6 +56,8 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('/devices', [DeviceController::class, 'index'])->name('devices');
     Route::post('/devices/{device}/mode', [DeviceController::class, 'updateMode'])->name('devices.mode');
 
+    Route::get('/api-docs', [PageController::class, 'apiDocs'])->name('api-docs');
+
     Route::get('/{page}', [PageController::class, 'index'])->name('page');
     Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 });

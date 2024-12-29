@@ -249,6 +249,72 @@
             </div>
         </div>
 
+        <!-- Create Order Section -->
+        <div class="row mt-4">
+            <div class="col-lg-12 mb-lg-0 mb-4">
+                <div class="card">
+                    <div class="card-header pb-0 p-3">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="mb-2">Create Direct Order</h6>
+                        </div>
+                    </div>
+                    <div class="card-body p-3">
+                        @if(session('error'))
+                            <div class="alert alert-danger">
+                                {{ session('error') }}
+                            </div>
+                        @endif
+                        @if(session('success'))
+                            <div class="alert alert-success">
+                                {{ session('success') }}
+                            </div>
+                        @endif
+
+                        <form action="{{ route('orders.store') }}" method="POST">
+                            @csrf
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="type" class="form-control-label">Order Type</label>
+                                        <select class="form-control" id="type" name="type" required>
+                                            <option value="follow">Follow</option>
+                                            <option value="like">Like</option>
+                                        </select>
+                                        @error('type')
+                                            <span class="text-danger">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="target" class="form-control-label">Target (Username/URL Post)</label>
+                                        <input class="form-control" type="text" name="target" id="target" required>
+                                        @error('target')
+                                            <span class="text-danger">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="requested" class="form-control-label">Quantity</label>
+                                        <input class="form-control" type="number" name="requested" id="requested" value="10" min="1" required>
+                                        @error('requested')
+                                            <span class="text-danger">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-12 text-end">
+                                    <button type="submit" class="btn btn-primary">Create Order</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         @include('layouts.footers.auth.footer')
     </div>
 @endsection

@@ -44,13 +44,15 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('/sign-up-static', [PageController::class, 'signup'])->name('sign-up-static');
     Route::get('/workers', [PageController::class, 'workers'])->name('workers');
 
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders');
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
     Route::post('/orders/{order}/increment-priority', [OrderController::class, 'incrementPriority'])
         ->name('orders.increment-priority');
     Route::post('/orders/{order}/decrement-priority', [OrderController::class, 'decrementPriority'])
         ->name('orders.decrement-priority');
     Route::delete('/orders/{order}', [OrderController::class, 'destroy'])
         ->name('orders.destroy');
+
     Route::get('/devices', [DeviceController::class, 'index'])->name('devices');
     Route::post('/devices/{device}/mode', [DeviceController::class, 'updateMode'])->name('devices.mode');
 

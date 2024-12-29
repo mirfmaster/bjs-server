@@ -215,4 +215,5 @@ return [
     'bjs_api' => env('BJS_API'),
     'bjs_username' => env('BJS_USERNAME'),
     'bjs_password' => env('BJS_PASSWORD'),
+    'redispo_auth' => env('REDISPO_AUTH'),
 ];

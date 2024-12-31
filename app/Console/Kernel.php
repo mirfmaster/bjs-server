@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->job(new GetUserIndofoll)->daily();
         $schedule->job(new SyncBJSOrders)->everyThreeMinutes()->withoutOverlapping();
+        $schedule->command('redispo:move-users')->everySixHours();
     }
 
     /**

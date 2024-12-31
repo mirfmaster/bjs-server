@@ -1,10 +1,10 @@
-app/Client/BJSClient.php
-app/Client/UtilClient.php
+app/Jobs/*
+app/Models/*
+app/Services/*
+app/Wrapper/*
+app/Client/*
 
 app/Console/Kernel.php
-
-app/Jobs/GetUserIndofoll.php
-app/Jobs/SyncBJSOrders.php
 
 app/Http/Controllers/Api/WorkerController.php
 app/Http/Controllers/HomeController.php
@@ -12,21 +12,9 @@ app/Http/Controllers/OrderController.php
 app/Http/Controllers/PageController.php
 app/Http/Controllers/DeviceController.php
 
-app/Models/IF_User.php
-app/Models/Order.php
-app/Models/User.php
-app/Models/Worker.php
-app/Models/Device.php
-app/Models/DeviceStatistic.php
-
-app/Services/BJSService.php
-app/Services/OrderService.php
-
 app/Traits/LoggerTrait.php
 
 app/Utils/Util.php
-
-app/Wrapper/Util.php
 
 composer.json
 
@@ -37,11 +25,11 @@ docker-compose.yml
 
 resources/views/home.blade.php
 resources/views/layouts/app.blade.php
+
 resources/views/pages/dashboard.blade.php
 resources/views/pages/devices.blade.php
 resources/views/pages/orders.blade.php
 resources/views/pages/tables.blade.php
-
 resources/views/pages/workers.blade.php
 
 routes/api.php

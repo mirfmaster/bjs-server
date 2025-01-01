@@ -30,8 +30,9 @@ class HomeController extends Controller
         $workerCounters = Worker::query()->count();
         $activeWorkerCounter = Worker::query()->where('status', 'active')->count();
         $loginRequiredCounter = Worker::query()->where('status', 'relogin')->count();
+
         $newWorkers = Worker::query()
-            ->where('status', 'bjs_new_login')
+            ->where('status', 'new_login')
             ->whereDate('created_at', Carbon::today())
             ->count();
         $loginStateBjs = Redis::get('system:bjs:login-state') ? 'True' : 'False';

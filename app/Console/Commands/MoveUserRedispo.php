@@ -24,6 +24,8 @@ class MoveUserRedispo extends Command
 
     public function handle()
     {
+        $this->info('Start running command at: ' . now()->format('d M Y H:i:s'));
+
         foreach ($this->endpoints as $endpoint) {
             try {
                 $response = Http::withHeaders([

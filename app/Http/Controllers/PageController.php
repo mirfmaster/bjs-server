@@ -113,6 +113,22 @@ class PageController extends Controller
                     ],
                 ], JSON_PRETTY_PRINT),
             ],
+            [
+                'method' => 'GET',
+                'endpoint' => '/api/worker/update-status',
+                'description' => 'Update status of workers from one status to another with a specified limit',
+                'parameters' => [
+                    ['name' => 'from_status', 'type' => 'string', 'required' => 'required', 'description' => 'Current status of workers to update'],
+                    ['name' => 'to_status', 'type' => 'string', 'required' => 'required', 'description' => 'New status to set for workers'],
+                    ['name' => 'limit', 'type' => 'integer', 'required' => 'optional', 'description' => 'Maximum number of workers to update. If not specified, updates all matching records'],
+                ],
+                'response_example' => json_encode([
+                    'success' => true,
+                    'data' => [
+                        'affected_rows' => 50,
+                    ],
+                ], JSON_PRETTY_PRINT),
+            ],
         ];
 
         return view('pages.api-docs', compact('apis'));

@@ -20,6 +20,7 @@ class MoveUserRedispo extends Command
         '/v1/user/moveall/igresponseerror/active-99999999',
         '/v1/user/moveall/redispofailedspamming/active-99999999',
         '/v1/user/moveall/igactionspamerror/active-99999999',
+        '/v1/user/moveall/redispocheckpointskipby/active-99999999',
     ];
 
     public function handle()

@@ -6,12 +6,18 @@ use App\Traits\LoggerTrait;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\FileCookieJar;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Psr\Http\Message\ResponseInterface;
 
 class BJSClient
 {
     use LoggerTrait;
+
+    private const CACHE_KEY = 'system:bjs:auth';
+
+    private const CACHE_TTL = 86400; // 24 hours
 
     public Client $cli;
 
@@ -32,11 +38,42 @@ class BJSClient
         $this->cookieFile = storage_path('app/bjs-cookies.json');
         $this->baseUrl = config('app.bjs_api');
 
+        // Load saved auth state
+        $this->loadAuthState();
+
         // Initialize cookie jar with persistence
         $this->cookieJar = new FileCookieJar($this->cookieFile, true);
 
         // Initialize HTTP clients
         $this->initializeClients();
+    }
+
+    private function loadAuthState(): void
+    {
+        $authData = Cache::get(self::CACHE_KEY);
+        if ($authData) {
+            $this->bearerToken = $authData['token'];
+            Log::debug('Loaded auth state from cache', ['has_token' => ! empty($this->bearerToken)]);
+        }
+    }
+
+    private function saveAuthState(): void
+    {
+        $authData = [
+            'token' => $this->bearerToken,
+            'updated_at' => now()->timestamp,
+        ];
+        Cache::put(self::CACHE_KEY, $authData, self::CACHE_TTL);
+        Log::debug('Saved auth state to cache', ['has_token' => ! empty($this->bearerToken)]);
+    }
+
+    private function clearAuthState(): void
+    {
+        $this->bearerToken = null;
+        Cache::forget(self::CACHE_KEY);
+        $this->cookieJar->clear();
+        $this->cookieJar->save($this->cookieFile);
+        Log::debug('Cleared auth state');
     }
 
     private function initializeClients(): void
@@ -78,9 +115,6 @@ class BJSClient
         ]);
     }
 
-    /**
-     * New token-based authentication method
-     */
     public function loginWithToken(): bool
     {
         try {
@@ -104,19 +138,18 @@ class BJSClient
 
             // Store the token and reinitialize clients with new token
             $this->bearerToken = $result['data']['access_token'];
+            $this->saveAuthState();
             $this->initializeClients();
 
             return true;
         } catch (\Throwable $th) {
             $this->logError($th);
+            $this->clearAuthState();
 
             return false;
         }
     }
 
-    /**
-     * Original form-based login method
-     */
     public function login(): bool
     {
         try {
@@ -149,6 +182,7 @@ class BJSClient
             return false;
         } catch (\Throwable $th) {
             $this->logError($th);
+            $this->clearAuthState();
 
             return false;
         }
@@ -161,18 +195,14 @@ class BJSClient
             $result = json_decode((string) $response->getBody());
 
             if (! $result?->data?->auth) {
-                $this->cookieJar->clear();
-                $this->cookieJar->save($this->cookieFile);
-                $this->bearerToken = null;
+                $this->clearAuthState();
 
                 return false;
             }
 
             return true;
         } catch (\Throwable $th) {
-            $this->cookieJar->clear();
-            $this->cookieJar->save($this->cookieFile);
-            $this->bearerToken = null;
+            $this->clearAuthState();
             $this->logError($th);
 
             return false;

@@ -5,96 +5,127 @@ namespace App\Client;
 use App\Traits\LoggerTrait;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\FileCookieJar;
-use GuzzleHttp\Cookie\SetCookie;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Redis;
 use Psr\Http\Message\ResponseInterface;
 
 class BJSClient
 {
     use LoggerTrait;
 
-    public \GuzzleHttp\Client $cli;
-    public \GuzzleHttp\Client $cliXML;
-    // TODO: move into http
+    public Client $cli;
+
+    public Client $cliXML;
+
     public Http $http;
 
-    public $loginState = false;
-    public $isValidSession = false;
-    private FileCookieJar $cookie;
-    private string $redisKey = 'system:bjs_cookies';
+    private FileCookieJar $cookieJar;
+
+    private string $cookieFile;
+
+    private string $baseUrl;
+
+    private ?string $bearerToken = null;
 
     public function __construct()
     {
-        $cookieFilePath = storage_path('app/bjs-cookies.json');
+        $this->cookieFile = storage_path('app/bjs-cookies.json');
+        $this->baseUrl = config('app.bjs_api');
 
-        // Try to load cookies from Redis first
-        $cookies = $this->loadCookiesFromRedis();
+        // Initialize cookie jar with persistence
+        $this->cookieJar = new FileCookieJar($this->cookieFile, true);
 
-        // Create new cookie jar
-        $this->cookie = new FileCookieJar($cookieFilePath, true);
+        // Initialize HTTP clients
+        $this->initializeClients();
+    }
 
-        // If we have cookies in Redis, load them into the jar
-        if ($cookies) {
-            foreach ($cookies as $cookie) {
-                $this->cookie->setCookie(new SetCookie($cookie));
-            }
+    private function initializeClients(): void
+    {
+        $defaultHeaders = [
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Referer' => 'https://belanjasosmed.com/admin/orders?status=0&service=11',
+            'Origin' => $this->baseUrl,
+            'Accept' => 'application/json, text/plain, */*',
+            'Accept-Encoding' => 'gzip, deflate, br, zstd',
+            'Accept-Language' => 'en-US',
+            'Sec-Ch-Ua' => '"Chromium";v="128", "Not:A-Brand";v="24", "Google Chrome";v="128"',
+            'Sec-Ch-Ua-Mobile' => '?0',
+            'Sec-Ch-Ua-Platform' => '"Linux"',
+            'Sec-Fetch-Dest' => 'empty',
+            'Sec-Fetch-Mode' => 'cors',
+            'Sec-Fetch-Site' => 'same-origin',
+            'User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            'Connection' => 'keep-alive',
+        ];
+
+        // Add bearer token if available
+        if ($this->bearerToken) {
+            $defaultHeaders['Authorization'] = 'Bearer ' . $this->bearerToken;
         }
 
-        $url = config('app.bjs_api');
-
         $this->cli = new Client([
-            'cookies' => $this->cookie,
-            'base_uri' => $url,
-            'headers' => [
-                'X-Requested-With' => 'XMLHttpRequest',
-                'Referer' => 'https://belanjasosmed.com/admin/orders?status=0&service=11',
-                'Origin' => $url,
-            ],
+            'cookies' => $this->cookieJar,
+            'base_uri' => $this->baseUrl,
+            'headers' => $defaultHeaders,
         ]);
 
         $this->cliXML = new Client([
-            'cookies' => $this->cookie,
-            'base_uri' => $url,
-            'headers' => [
-                'X-Requested-With' => 'XMLHttpRequest',
-                'Referer' => 'https://belanjasosmed.com/admin/orders?status=0&service=11',
-                'Origin' => $url,
-            ],
+            'cookies' => $this->cookieJar,
+            'base_uri' => $this->baseUrl,
+            'headers' => array_merge($defaultHeaders, [
+                'Content-Type' => 'application/json',
+            ]),
         ]);
     }
 
-    public function isAllowedLogin(): bool
-    {
-        return Redis::get('system:bjs:login-state') === 'true';
-    }
-
-    private function syncCookiesToRedis(): void
-    {
-        $cookies = $this->cookie->toArray();
-        if (!empty($cookies)) {
-            Redis::setex($this->redisKey, 86400, serialize($cookies)); // 24 hours TTL
-        }
-    }
-
-    private function loadCookiesFromRedis(): ?array
-    {
-        $cookies = Redis::get($this->redisKey);
-        return $cookies ? unserialize($cookies) : null;
-    }
-
-    public function login()
+    /**
+     * New token-based authentication method
+     */
+    public function loginWithToken(): bool
     {
         try {
-            $csrf = $this->getCSRFToken();
-            if ($csrf == null) {
+            $response = $this->cli->request('POST', '/admin/api/auth', [
+                'json' => [
+                    'login' => config('app.bjs_username'),
+                    'password' => config('app.bjs_password'),
+                    're_captcha' => '',
+                ],
+            ]);
+
+            if ($response->getStatusCode() !== 200) {
                 return false;
             }
 
-            $username = config('app.bjs_username');
-            $password = config('app.bjs_password');
-            $req = $this->cli->request('POST', '/admin', [
+            $result = json_decode((string) $response->getBody(), true);
+
+            if (! $result['success'] || empty($result['data']['access_token'])) {
+                return false;
+            }
+
+            // Store the token and reinitialize clients with new token
+            $this->bearerToken = $result['data']['access_token'];
+            $this->initializeClients();
+
+            return true;
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return false;
+        }
+    }
+
+    /**
+     * Original form-based login method
+     */
+    public function login(): bool
+    {
+        try {
+            $csrf = $this->getCSRFToken();
+            if ($csrf === null) {
+                return false;
+            }
+
+            $response = $this->cli->request('POST', '/admin', [
                 'headers' => [
                     'X-Requested-With' => 'XMLHttpRequest',
                     'Referer' => 'https://belanjasosmed.com/admin',
@@ -102,83 +133,96 @@ class BJSClient
                 ],
                 'form_params' => [
                     '_csrf_admin' => $csrf,
-                    'SignInForm[login]' => $username,
-                    'SignInForm[password]' => $password,
+                    'SignInForm[login]' => config('app.bjs_username'),
+                    'SignInForm[password]' => config('app.bjs_password'),
                     'SignInForm[remember]' => 1,
                 ],
             ]);
 
-            $code = $req->getStatusCode();
+            if ($response->getStatusCode() === 200) {
+                $this->cookieJar->save($this->cookieFile);
+                $this->initializeClients();
 
-            if ($code === 200) {
-                $this->syncCookiesToRedis(); // Sync after successful login
                 return true;
             }
 
             return false;
         } catch (\Throwable $th) {
             $this->logError($th);
+
             return false;
         }
     }
 
-    public function checkAuth()
+    public function checkAuth(): bool
     {
         try {
-            $testSession = $this->cliXML->request('GET', '/admin/api/general/check-auth');
-            $response = (string) $testSession->getBody();
-            $responseJson = json_decode($response);
+            $response = $this->cliXML->request('GET', '/admin/api/general/check-auth');
+            $result = json_decode((string) $response->getBody());
 
-            $isAuth = $responseJson->data->auth;
-            if ($isAuth) {
-                $this->syncCookiesToRedis(); // Sync if auth is successful
+            if (! $result?->data?->auth) {
+                $this->cookieJar->clear();
+                $this->cookieJar->save($this->cookieFile);
+                $this->bearerToken = null;
+
+                return false;
             }
 
-            return $isAuth;
+            return true;
         } catch (\Throwable $th) {
-            $this->cookie->clear();
+            $this->cookieJar->clear();
+            $this->cookieJar->save($this->cookieFile);
+            $this->bearerToken = null;
             $this->logError($th);
+
             return false;
         }
     }
 
-    private function getCSRFToken()
-    {
-        $req = $this->cli->request('GET', '/admin');
-        $html = (string) $req->getBody();
-
-        return $this->extractToken($html);
-    }
-
-    private function extractToken($html)
-    {
-        $pattern = '/<meta name="csrf-token" content="(.*?)">/';
-        preg_match($pattern, $html, $matches);
-
-        return $matches[1] ?? null;
-    }
-
-    public function getInfo($orderId): object
+    private function getCSRFToken(): ?string
     {
         try {
-            $request = $this->cliXML->get("/admin/api/orders/get-info/$orderId?type=2&num=0");
-            $response = (string) $request->getBody();
-            $reqJson = json_decode($response, false);
-            return $reqJson;
+            $response = $this->cli->request('GET', '/admin');
+            $html = (string) $response->getBody();
+
+            return $this->extractToken($html);
         } catch (\Throwable $th) {
             $this->logError($th);
-            return (object)[];
+
+            return null;
         }
     }
 
-    public function setStartCount($id, $start)
+    private function extractToken(string $html): ?string
+    {
+        if (preg_match('/<meta name="csrf-token" content="(.*?)">/', $html, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    public function getInfo(int $orderId): object
     {
         try {
-            return $this->cliXML->post('/admin/api/orders/set-start-count/' . $id, [
-                'form_params' => [
-                    'start_count' => $start,
-                ],
+            $response = $this->cliXML->get("/admin/api/orders/get-info/$orderId?type=2&num=0");
+
+            return json_decode((string) $response->getBody());
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return (object) [];
+        }
+    }
+
+    public function setStartCount(int $id, int $start): bool
+    {
+        try {
+            $response = $this->cliXML->post("/admin/api/orders/set-start-count/$id", [
+                'form_params' => ['start_count' => $start],
             ]);
+
+            return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
             $this->logError($th);
 
@@ -186,14 +230,14 @@ class BJSClient
         }
     }
 
-    public function setRemains($id, $remains)
+    public function setRemains(int $id, int $remains): bool
     {
         try {
-            return $this->cliXML->post('/admin/api/orders/set-remains/' . $id, [
-                'form_params' => [
-                    'remains' => $remains,
-                ],
+            $response = $this->cliXML->post("/admin/api/orders/set-remains/$id", [
+                'form_params' => ['remains' => $remains],
             ]);
+
+            return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
             $this->logError($th);
 
@@ -201,14 +245,14 @@ class BJSClient
         }
     }
 
-    public function setPartial($id, $remains)
+    public function setPartial(int $id, int $remains): bool
     {
         try {
-            return $this->cliXML->post('/admin/api/orders/set-partial/' . $id, [
-                'form_params' => [
-                    'remains' => $remains,
-                ],
+            $response = $this->cliXML->post("/admin/api/orders/set-partial/$id", [
+                'form_params' => ['remains' => $remains],
             ]);
+
+            return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
             $this->logError($th);
 
@@ -216,11 +260,12 @@ class BJSClient
         }
     }
 
-
-    public function cancelOrder($id)
+    public function cancelOrder(int $id): bool
     {
         try {
-            return $this->cliXML->post('/admin/api/orders/cancel/' . $id);
+            $response = $this->cliXML->post("/admin/api/orders/cancel/$id");
+
+            return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
             $this->logError($th);
 
@@ -228,14 +273,14 @@ class BJSClient
         }
     }
 
-    public function changeStatus($id, $status)
+    public function changeStatus(int $id, string $status): bool
     {
         try {
-            return $this->cliXML->post('/admin/api/orders/change-status/' . $id, [
-                'form_params' => [
-                    'status' => $status,
-                ],
+            $response = $this->cliXML->post("/admin/api/orders/change-status/$id", [
+                'form_params' => ['status' => $status],
             ]);
+
+            return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
             $this->logError($th);
 
@@ -243,14 +288,14 @@ class BJSClient
         }
     }
 
-    public function changeStatusServices($id, bool $status)
+    public function changeStatusServices(int $id, bool $status): bool
     {
         try {
-            return $this->cliXML->post('/admin/api/services/change-status/' . $id, [
-                'form_params' => [
-                    'status' => $status,
-                ],
+            $response = $this->cliXML->post("/admin/api/services/change-status/$id", [
+                'form_params' => ['status' => $status],
             ]);
+
+            return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
             $this->logError($th);
 
@@ -258,14 +303,12 @@ class BJSClient
         }
     }
 
-    public function getUsername($link)
+    public function getUsername(string $link): string
     {
         $input = str_replace('@', '', $link);
-
-        // Replace /reel/ and /tv/ with /p/ in the URL
         $input = str_replace(['/reel/', '/tv/'], '/p/', $input);
 
-        if (!filter_var($input, FILTER_VALIDATE_URL)) {
+        if (! filter_var($input, FILTER_VALIDATE_URL)) {
             return $input;
         }
 
@@ -283,12 +326,15 @@ class BJSClient
     public function getOrdersData(int $serviceId, int $status, int $pageSize = 100): Collection
     {
         try {
-            $request = $this->getOrdersList($status, $serviceId, $pageSize);
-            $resp = json_decode($request->getBody(), false);
-            return collect($resp->data->orders);
+            $response = $this->getOrdersList($status, $serviceId, $pageSize);
+            $data = json_decode((string) $response->getBody());
+
+            return collect($data->data->orders);
         } catch (\Throwable $th) {
             $this->logError($th);
+
             return collect([]);
         }
     }
 }
+

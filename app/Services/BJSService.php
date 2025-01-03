@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Client\BJSClient;
 use App\Traits\LoggerTrait;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class BJSService
 {
@@ -14,8 +15,7 @@ class BJSService
 
     public function __construct(
         public BJSClient $bjs
-    ) {
-    }
+    ) {}
 
     public function login(): bool
     {
@@ -26,12 +26,34 @@ class BJSService
 
     public function auth(): bool
     {
-        $isLogin = $this->bjs->checkAuth();
-        if (! $isLogin) {
-            return $this->login();
+        // First check if current session is valid
+        $isAuth = $this->bjs->checkAuth();
+        if ($isAuth) {
+            return true;
         }
 
-        return true;
+        Log::info('Session not authenticated, attempting token-based login');
+
+        // Try token-based auth first
+        $tokenLoginSuccess = $this->bjs->loginWithToken();
+        if ($tokenLoginSuccess) {
+            Log::info('Token-based login successful');
+
+            return true;
+        }
+        Log::warning('Token-based login failed, falling back to form-based login');
+
+        // // Fall back to traditional form-based login
+        // $formLoginSuccess = $this->bjs->login();
+        // if ($formLoginSuccess) {
+        //     Log::info('Form-based login successful');
+        //
+        //     return true;
+        // }
+
+        Log::error('All authentication attempts failed');
+
+        return false;
     }
 
     public function getOrdersData(int $serviceId, int $status, int $pageSize = 100): Collection

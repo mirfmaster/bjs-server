@@ -27,9 +27,11 @@ class BJSWrapper
     public function fetchLikeOrder($watchlists)
     {
         $context = ['process' => 'like'];
+        Log::info('Fetching order', $context);
         foreach ($watchlists as $id) {
             $context['processID'] = $id;
 
+            Log::info('Getting orders with 0 status data', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
 
             Log::info('Processing orders: ' . count($orders), $context);
@@ -103,9 +105,11 @@ class BJSWrapper
     public function fetchFollowOrder($watchlists)
     {
         $context = ['process' => 'follow'];
+        Log::info('Fetching order', $context);
         foreach ($watchlists as $id) {
             $context['processID'] = $id;
 
+            Log::info('Getting orders with 0 status data', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
 
             Log::info('Processing orders: ' . count($orders), $context);

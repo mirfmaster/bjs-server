@@ -4,7 +4,6 @@ namespace App\Client;
 
 use App\Traits\LoggerTrait;
 use GuzzleHttp\Client;
-use GuzzleHttp\Cookie\FileCookieJar;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -15,9 +14,9 @@ class BJSClient
 {
     use LoggerTrait;
 
-    private const CACHE_KEY = 'system:bjs:auth';
+    private const AUTH_CACHE_KEY = 'system:bjs:auth';
 
-    private const CACHE_TTL = 86400; // 24 hours
+    private const AUTH_CACHE_TTL = 86400; // 24 hours
 
     public Client $cli;
 
@@ -25,9 +24,7 @@ class BJSClient
 
     public Http $http;
 
-    private FileCookieJar $cookieJar;
-
-    private string $cookieFile;
+    private RedisCookieJar $cookieJar;
 
     private string $baseUrl;
 
@@ -35,14 +32,13 @@ class BJSClient
 
     public function __construct()
     {
-        $this->cookieFile = storage_path('app/bjs-cookies.json');
         $this->baseUrl = config('app.bjs_api');
+
+        // Initialize Redis-based cookie jar
+        $this->cookieJar = new RedisCookieJar();
 
         // Load saved auth state
         $this->loadAuthState();
-
-        // Initialize cookie jar with persistence
-        $this->cookieJar = new FileCookieJar($this->cookieFile, true);
 
         // Initialize HTTP clients
         $this->initializeClients();
@@ -50,7 +46,7 @@ class BJSClient
 
     private function loadAuthState(): void
     {
-        $authData = Cache::get(self::CACHE_KEY);
+        $authData = Cache::get(self::AUTH_CACHE_KEY);
         if ($authData) {
             $this->bearerToken = $authData['token'];
             Log::debug('Loaded auth state from cache', ['has_token' => ! empty($this->bearerToken)]);
@@ -63,16 +59,15 @@ class BJSClient
             'token' => $this->bearerToken,
             'updated_at' => now()->timestamp,
         ];
-        Cache::put(self::CACHE_KEY, $authData, self::CACHE_TTL);
+        Cache::put(self::AUTH_CACHE_KEY, $authData, self::AUTH_CACHE_TTL);
         Log::debug('Saved auth state to cache', ['has_token' => ! empty($this->bearerToken)]);
     }
 
     private function clearAuthState(): void
     {
         $this->bearerToken = null;
-        Cache::forget(self::CACHE_KEY);
+        Cache::forget(self::AUTH_CACHE_KEY);
         $this->cookieJar->clear();
-        $this->cookieJar->save($this->cookieFile);
         Log::debug('Cleared auth state');
     }
 
@@ -139,6 +134,7 @@ class BJSClient
             // Store the token and reinitialize clients with new token
             $this->bearerToken = $result['data']['access_token'];
             $this->saveAuthState();
+            $this->cookieJar->persist();
             $this->initializeClients();
 
             return true;
@@ -173,7 +169,7 @@ class BJSClient
             ]);
 
             if ($response->getStatusCode() === 200) {
-                $this->cookieJar->save($this->cookieFile);
+                $this->cookieJar->persist();
                 $this->initializeClients();
 
                 return true;
@@ -367,4 +363,3 @@ class BJSClient
         }
     }
 }
-

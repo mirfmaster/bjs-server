@@ -92,7 +92,7 @@ class OrderService
     public function getOrders()
     {
         return $this->order
-            ->whereIn('status', ['processing'])
+            ->whereIn('status', ['inprogress', 'processing'])
             ->orderBy('priority', 'desc')
             ->orderByRaw("array_position(ARRAY['like', 'comment', 'follow'], kind)")
             ->orderBy('created_at', 'asc')

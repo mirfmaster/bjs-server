@@ -311,6 +311,11 @@ class BJSWrapper
         }
 
         foreach ($orders as $order) {
+            if ($order->source == 'direct') {
+                Log::info("Skipping direct order: $order->id ");
+
+                continue;
+            }
             $stateLogin = (bool) Redis::get('system:allow-login-bjs');
             $baseContext['allow_login_bjs'] = $stateLogin;
             if ($stateLogin == false) {

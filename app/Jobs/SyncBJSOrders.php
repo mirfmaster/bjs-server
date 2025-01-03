@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
 {
@@ -37,13 +38,6 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
     public $timeout = 115;
 
     /**
-     * Delete the job if its models no longer exist.
-     *
-     * @var bool
-     */
-    public $deleteWhenMissingModels = true;
-
-    /**
      * Get the unique ID for the job.
      */
     public function uniqueId(): string
@@ -58,6 +52,7 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
      */
     public function handle()
     {
+        Log::info('Starting job SyncBJSOrders');
         $watchlistLike = [167];
         $watchlistFollow = [164];
 
@@ -68,7 +63,13 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
 
         $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient);
 
-        $bjsWrapper->bjsService->auth();
+        $auth = $bjsWrapper->bjsService->auth();
+        if (! $auth) {
+            Log::warning('BJS is not authenticated, skipping process');
+
+            return;
+        }
+
         $bjsWrapper->fetchLikeOrder($watchlistLike);
         $bjsWrapper->fetchFollowOrder($watchlistFollow);
         // TODO: remove this since the one moving the status is worker

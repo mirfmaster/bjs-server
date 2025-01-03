@@ -28,7 +28,6 @@ class UtilClient
         return preg_match('/(?:^|\.)instagram\.com$/', $parsed_url['host']) === 1;
     }
 
-
     public static function getIgMediaId($link, $returnShortcode = false)
     {
         if (! self::isValidIGUrl($link)) {
@@ -93,99 +92,116 @@ class UtilClient
         return null;
     }
 
+    /**
+     * Fetches Instagram user information using their public profile API.
+     * This function attempts to retrieve user profile data with retry mechanism and proxy support.
+     *
+     * @param  string  $username  The Instagram username to fetch information for
+     * @return object {
+     *                username: string              - The requested Instagram username
+     *                found: boolean               - Whether the user was found
+     *                retry: boolean               - Whether the request should be retried (e.g., due to rate limiting)
+     *                pk?: string                  - User's Instagram ID (only if found)
+     *                is_private?: boolean         - Whether the account is private (only if found)
+     *                has_anonymous_profile_picture?: boolean - Whether user has default profile picture (only if found)
+     *                total_media_timeline?: int   - Count of user's posts (only if found)
+     *                follower_count?: int         - Count of user's followers (only if found)
+     *                following_count?: int        - Count of users this account follows (only if found)
+     *                }
+     *
+     * @throws \Illuminate\Http\Client\RequestException When the HTTP request fails
+     * @throws \Exception For general errors (timeout, SSL issues, etc.)
+     */
     public function __IGGetInfo($username)
     {
+        $maxRetries = 4; // 3 * 1.5 rounded down for simplicity
+
         $resp = [
             'username' => $username,
             'found' => false,
-            'processed' => false,
             'retry' => false,
-            'probably_banned' => false,
-            'data' => [],
-            'debug' => [],
-            'counter' => 1,
         ];
 
-        for ($i = 1; $i <= round(3 * 1.5); $i++) {
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
             try {
-                $resp['counter'] = $i;
+                // Generate a new proxy URL for each attempt to avoid IP blocks
                 $proxy = Util::generateProxyUrl();
-                $resp['proxy'] = $proxy;
+
+                // Make request to Instagram's public profile API
                 $response = Http::withHeaders([
                     'X-IG-App-ID' => '936619743392459',
                     'Origin' => 'https://www.instagram.com',
                     'Referer' => 'https://www.instagram.com',
-                    "X-ASBD-ID" => 198387,
+                    'X-ASBD-ID' => '129477',
                 ])
                     ->timeout(6)
-                    ->withOptions([
-                        'proxy' => $proxy,
-                    ])
+                    ->withOptions(['proxy' => $proxy])
                     ->get('https://www.instagram.com/api/v1/users/web_profile_info/', [
                         'username' => $username,
                     ]);
 
-                $resp['processed'] = true;
+                // Handle user not found case
                 if ($response->status() === 404) {
                     return (object) $resp;
-                } elseif ($response->successful() && isset($response['data'])) {
-                    $data = $response['data']['user'];
-                    if (empty($data)) {
-                        $resp['probably_banned'] = true;
+                }
+
+                // Process successful response
+                if ($response->successful() && isset($response['data']['user'])) {
+                    $user = $response['data']['user'];
+                    if (empty($user)) {
                         break;
                     }
 
-                    // unset($data['edge_felix_video_timeline']);
-                    // unset($data['edge_related_profiles']);
+                    // Return full user profile data
+                    return (object) [
+                        'username' => $username,
+                        'found' => true,
+                        'pk' => $user['id'],
+                        'is_private' => $user['is_private'],
+                        'has_anonymous_profile_picture' => strpos($user['profile_pic_url'], '2446069589734326272') !== false,
+                        'total_media_timeline' => intval($user['edge_owner_to_timeline_media']['count']),
+                        'follower_count' => $user['edge_followed_by']['count'],
+                        'following_count' => $user['edge_follow']['count'],
+                    ];
+                }
 
-                    $resp['found'] = true;
-                    // $resp['data'] = (object) $data;
+                // Handle cases where we need to retry
+                $body = $response->body();
+                if ($response->status() === 200 && str_contains($body, 'Login • Instagram')) {
+                    // We got redirected to login page - likely rate limited
+                    $resp['retry'] = true;
 
-                    $total_media = intval($data['edge_owner_to_timeline_media']['count']);
-                    $anonym = strpos($data['profile_pic_url'], '2446069589734326272') !== false;
-
-                    $resp['pk'] = $data['id'];
-                    $resp['is_private'] = $data['is_private'];
-                    $resp['has_anonymous_profile_picture'] = $anonym;
-                    $resp['total_media_timeline'] = $total_media;
-                    $resp['follower_count'] = $data['edge_followed_by']['count'];
-                    $resp['following_count'] = $data['edge_follow']['count'];
-                    break;
-                } else {
-                    // Login • Instagram
-                    $message = $response->body();
-                    if ($response->status() == 200 && str_contains($message, "Login • Instagram")) {
-                        dump("Got redirected to login page");
-                        $resp['retry'] = true;
-                    } elseif ($message == "") {
-                        dump("Got empty response");
-                        $resp['retry'] = true;
-                    } else {
-                        dump($message);
-                    }
                     return (object) $resp;
                 }
-            } catch (\Illuminate\Http\Client\RequestException $e) {
-                if ($e->response && $e->response->status() == 404) {
-                    $resp['debug'][] = $e->getMessage();
-                    break;
-                } else {
-                    dump("requexcept " . $e->getMessage());
-                    $resp['debug'][] = 'got error ' . $e->response->status() . ", try again... ($proxy)";
+
+                if (empty($body)) {
+                    // Empty response usually indicates a temporary error
+                    $resp['retry'] = true;
+
+                    return (object) $resp;
                 }
             } catch (\Exception $e) {
-                $timedOut = str_contains($e->getMessage(), "timed out");
-                $sslError = str_contains($e->getMessage(), "unexpected eof while");
-                if ($timedOut || $sslError) {
+                // Network timeouts and SSL errors should trigger a retry
+                if (
+                    str_contains($e->getMessage(), 'timed out') ||
+                    str_contains($e->getMessage(), 'unexpected eof while')
+                ) {
                     $resp['retry'] = true;
-                    $resp['debug'][] = $e->getMessage();
-                } else {
-                    dump("except " . $e->getMessage());
+
+                    continue;
                 }
-                break;
+
+                // For 404 responses, we can stop trying
+                if (
+                    $e instanceof \Illuminate\Http\Client\RequestException &&
+                    $e->response?->status() === 404
+                ) {
+                    break;
+                }
             }
         }
 
+        // If we've exhausted all retries without success, return base response
         return (object) $resp;
     }
 

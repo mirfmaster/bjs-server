@@ -42,6 +42,8 @@ class BJSWrapper
                     'link' => $order->link,
                     'requested' => $order->count,
                 ];
+                Log::info('Prcessing order', $ctx);
+
                 $exist = $this->order->findBJSID($order->id);
                 if ($exist) {
                     Log::warning('Order already exist, skipping...', $ctx);
@@ -53,17 +55,22 @@ class BJSWrapper
                     $shortcode = $this->bjsService->extractIdentifier($order->link);
                     if ($shortcode === null) {
                         Log::warning('Shortcode is not valid, skipping...', $ctx);
+
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
                     }
 
-                    $getInfo = $this->util->__IGGetInfo($shortcode);
+                    $getInfo = $this->util->BJSGetMediaData($shortcode);
                     $info = $getInfo;
                     unset($info->data);
 
                     if (! $info->found || $info->owner_is_private) {
-                        Log::warning('Unable to fetch target data, skipping...', $ctx);
+                        Log::warning('Unable to fetch target data, skipping...', [
+                            'shortcode' => $shortcode,
+                            'info' => $info,
+                        ]);
+
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;

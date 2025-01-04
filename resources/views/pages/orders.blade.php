@@ -59,7 +59,7 @@
                                         </td>
                                         <td>
                                             <div class="d-flex px-2 py-1">
-                                                <a href="{{ $order->target }}" target="_blank"
+                                                <a href="https://anon.ws/?to={{ urlencode($order->target) }}" target="_blank"
                                                     class="text-primary text-xs font-weight-bold">
                                                     Target
                                                 </a>
@@ -199,7 +199,7 @@
                                         </td>
                                         <td>
                                             <div class="d-flex px-2 py-1">
-                                                <a href="{{ $order->target }}" target="_blank"
+                                                <a href="https://anon.ws/?to={{ urlencode($order->target) }}" target="_blank"
                                                     class="text-primary text-xs font-weight-bold">
                                                     Target
                                                 </a>

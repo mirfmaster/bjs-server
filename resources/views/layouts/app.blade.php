@@ -43,7 +43,7 @@
                 <main class="main-content border-radius-lg">
                     @yield('content')
                 </main>
-            @include('components.fixed-plugin')
+            {{-- @include('components.fixed-plugin') --}}
         @endif
     @endauth
 
@@ -65,7 +65,13 @@
     <script async defer src="https://buttons.github.io/buttons.js"></script>
     <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
     <script src="assets/js/argon-dashboard.js"></script>
-    @stack('js');
+    <script>
+        // Create a dummy element
+        const dummyEl = document.createElement('input');
+        // Call the darkMode function
+        darkMode(dummyEl);
+    </script>
+    @stack('js')
 </body>
 
 </html>

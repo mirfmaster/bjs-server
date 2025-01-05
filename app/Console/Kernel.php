@@ -14,8 +14,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->job(new GetUserIndofoll())->daily();
-        $schedule->job(new SyncBJSOrders())->everyThreeMinutes()->withoutOverlapping();
+        $schedule->job(new GetUserIndofoll)->daily();
+        $schedule->job(new SyncBJSOrders)->everyThreeMinutes()->withoutOverlapping();
         $schedule->command('redispo:move-users')->everySixHours()->appendOutputTo(storage_path('logs/scheduler.log'));
     }
 

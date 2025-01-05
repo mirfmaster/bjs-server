@@ -26,6 +26,7 @@ class BJSWrapper
 
     public function fetchLikeOrder($watchlists)
     {
+        Log::info('======================');
         $context = ['process' => 'like'];
         Log::info('Fetching order', $context);
         foreach ($watchlists as $id) {
@@ -34,7 +35,7 @@ class BJSWrapper
             Log::info('Getting orders with 0 status data', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info('Processing orders: ' . count($orders), $context);
+            Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -111,6 +112,7 @@ class BJSWrapper
 
     public function fetchFollowOrder($watchlists)
     {
+        Log::info('======================');
         $context = ['process' => 'follow'];
         Log::info('Fetching order', $context);
         foreach ($watchlists as $id) {
@@ -119,7 +121,7 @@ class BJSWrapper
             Log::info('Getting orders with 0 status data', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info('Processing orders: ' . count($orders), $context);
+            Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -152,14 +154,14 @@ class BJSWrapper
                     }
 
                     if ($this->order->isBlacklisted($info->pk)) {
-                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is blacklisted');
+                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is blacklisted');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
                     }
 
                     if ($info->is_private) {
-                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is private');
+                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is private');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
@@ -196,11 +198,12 @@ class BJSWrapper
 
     public function processCachedOrders()
     {
+        Log::info('======================');
         $context = ['process' => 'check-cached-order'];
         $orders = $this->order->getCachedOrders();
 
         $orderCount = $orders->count();
-        Log::info('Cached order count: ' . $orderCount, $context);
+        Log::info('Cached order count: '.$orderCount, $context);
 
         if ($orderCount == 0) {
             return;
@@ -208,6 +211,7 @@ class BJSWrapper
 
         foreach ($orders as $o) {
             $this->processCachedOrder($o, $context);
+            Log::info('======================'.PHP_EOL.PHP_EOL);
         }
     }
 
@@ -216,6 +220,8 @@ class BJSWrapper
      */
     private function processCachedOrder($order, array $baseContext): void
     {
+        // TODO: instead handling based on status, what about sync it from redis status -> db status -> bjs_status
+        // STATUS MOVER SHOULD USE RASPI AS THE MOVER
         $this->order->setOrderID($order->id);
         $redisData = $this->order->getOrderRedisKeys();
 
@@ -235,6 +241,10 @@ class BJSWrapper
                 break;
 
             case 'processing':
+                $this->handleProcessingCache($remainingCount, $redisData, $context);
+                break;
+
+            case 'completed':
                 $this->handleProcessingCache($remainingCount, $redisData, $context);
                 break;
 
@@ -302,6 +312,7 @@ class BJSWrapper
      */
     public function processOrders(): void
     {
+        Log::info('======================');
         $stateLogin = (bool) Redis::get('system:allow-login-bjs');
         $baseContext = [
             'process' => 'check-order',
@@ -331,6 +342,7 @@ class BJSWrapper
                 return;
             }
             $this->processOrderStatus($order, $baseContext);
+            Log::info('======================'.PHP_EOL.PHP_EOL);
         }
     }
 
@@ -358,7 +370,19 @@ class BJSWrapper
                 break;
 
             case 'processing':
-                $this->handleProcessingOrder($order, $redisData['status'], $remainingCount, $context);
+                $this->handleProcessingOrder($order, $remainingCount, $context);
+                break;
+
+            case 'completed':
+                $this->handleCompletedOrder($order, $remainingCount, $context);
+                break;
+
+            case 'partial':
+                $this->handleCompletedOrder($order, $remainingCount, $context);
+                break;
+
+            case 'cancel':
+                $this->handleCompletedOrder($order, $remainingCount, $context);
                 break;
 
             default:
@@ -406,14 +430,108 @@ class BJSWrapper
     /**
      * Handle orders in 'processing' status
      */
-    private function handleProcessingOrder($order, string $redisStatus, int $remainingCount, array $context): void
+    private function handleProcessingOrder($order, int $remainingCount, array $context): void
     {
-        if ($redisStatus === 'processing') {
-            $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
-            Log::info('Updated remaining count for processing order', array_merge($context, [
-                'update_status_bjs' => $remainingUpdated,
-            ]));
-        }
+        $status = 'processing';
+        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
+        $updateStatus = $this->bjsCli->changeStatus($order->bjs_id, $status);
+
+        $updated = $order->update([
+            'status' => $status,
+            'status_bjs' => $status,
+        ]);
+        Log::info('Updating BJS', array_merge($context, [
+            'updateStatusTo' => $status,
+            'update_remains' => $remainingUpdated,
+            'updated_order' => $updated,
+            'updateStatus' => $updateStatus,
+        ]));
+    }
+
+    /**
+     * Handle orders in 'completed' status
+     */
+    private function handleCompletedOrder($order, int $remainingCount, array $context): void
+    {
+        $status = 'completed';
+        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
+        $updateStatus = $this->bjsCli->changeStatus($order->bjs_id, $status);
+
+        $updated = $order->update([
+            'status' => $status,
+            'status_bjs' => $status,
+        ]);
+        Log::info('Updating BJS', array_merge($context, [
+            'updateStatusTo' => $status,
+            'update_remains' => $remainingUpdated,
+            'updated_order' => $updated,
+            'updateStatus' => $updateStatus,
+        ]));
+    }
+
+    /**
+     * Handle orders in 'partial' status
+     */
+    private function handlePartialOrder($order, int $remainingCount, array $context): void
+    {
+        $status = 'partial';
+        $reqBJS = $this->bjsCli->setPartial($order->bjs_id, $remainingCount);
+
+        $updated = $order->update([
+            'status' => $status,
+            'status_bjs' => $status,
+            'partial_count' => $remainingCount,
+        ]);
+        Log::info('Updating BJS', array_merge($context, [
+            'updateStatusTo' => $status,
+            'updated_order' => $updated,
+            'update_bjs' => $reqBJS,
+        ]));
+    }
+
+    /**
+     * Handle orders in 'cancel' status
+     */
+    private function handleCancelOrder($order, int $remainingCount, array $context): void
+    {
+        $status = 'cancel';
+        $reqBJS = $this->bjsCli->cancelOrder($order->bjs_id);
+
+        $updated = $order->update([
+            'status' => $status,
+            'status_bjs' => $status,
+            'partial_count' => $remainingCount,
+        ]);
+        Log::info('Updating BJS', array_merge($context, [
+            'updateStatusTo' => $status,
+            'updated_order' => $updated,
+            'update_bjs' => $reqBJS,
+        ]));
+    }
+
+    /**
+     * Handle orders in 'completed' status
+     */
+    private function itest($order, int $remainingCount, array $context): void
+    {
+        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
+        Log::info('Updated remaining count for processing order', array_merge($context, [
+            'update_status_bjs' => $remainingUpdated,
+        ]));
+        //         if (in_array($o->status, ['inprogress', 'processing', 'completed'])) {
+        //     $isSuccess = $this->bjs->changeStatus($o->bjs_id, $o->status);
+        //     $this->updateRemains($o);
+        // } elseif ($o->status == 'partial') {
+        //     $isSuccess = $this->bjs->setPartial($o->bjs_id, $o->partial_count);
+        // } elseif ($o->status == 'cancel') {
+        //     $isSuccess = $this->bjs->cancelOrder($o->bjs_id);
+        // }
+        //
+        // if ($isSuccess) {
+        //     $o->status_bjs = $o->status;
+        //     $o->save();
+        // }
+        //
     }
 
     /**

@@ -73,7 +73,7 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         $bjsWrapper->fetchLikeOrder($watchlistLike);
         $bjsWrapper->fetchFollowOrder($watchlistFollow);
         // TODO: remove this since the one moving the status is worker
-        $bjsWrapper->processCachedOrders();
+        // $bjsWrapper->processCachedOrders();
         $bjsWrapper->processOrders();
     }
 }

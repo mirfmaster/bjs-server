@@ -460,6 +460,7 @@ class BJSWrapper
         $updated = $order->update([
             'status' => $status,
             'status_bjs' => $status,
+            'end_at' => now(),
         ]);
         Log::info('Updating BJS', array_merge($context, [
             'updateStatusTo' => $status,
@@ -481,6 +482,7 @@ class BJSWrapper
             'status' => $status,
             'status_bjs' => $status,
             'partial_count' => $remainingCount,
+            'end_at' => now(),
         ]);
         Log::info('Updating BJS', array_merge($context, [
             'updateStatusTo' => $status,
@@ -501,37 +503,13 @@ class BJSWrapper
             'status' => $status,
             'status_bjs' => $status,
             'partial_count' => $remainingCount,
+            'end_at' => now(),
         ]);
         Log::info('Updating BJS', array_merge($context, [
             'updateStatusTo' => $status,
             'updated_order' => $updated,
             'update_bjs' => $reqBJS,
         ]));
-    }
-
-    /**
-     * Handle orders in 'completed' status
-     */
-    private function itest($order, int $remainingCount, array $context): void
-    {
-        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
-        Log::info('Updated remaining count for processing order', array_merge($context, [
-            'update_status_bjs' => $remainingUpdated,
-        ]));
-        //         if (in_array($o->status, ['inprogress', 'processing', 'completed'])) {
-        //     $isSuccess = $this->bjs->changeStatus($o->bjs_id, $o->status);
-        //     $this->updateRemains($o);
-        // } elseif ($o->status == 'partial') {
-        //     $isSuccess = $this->bjs->setPartial($o->bjs_id, $o->partial_count);
-        // } elseif ($o->status == 'cancel') {
-        //     $isSuccess = $this->bjs->cancelOrder($o->bjs_id);
-        // }
-        //
-        // if ($isSuccess) {
-        //     $o->status_bjs = $o->status;
-        //     $o->save();
-        // }
-        //
     }
 
     /**
@@ -544,7 +522,7 @@ class BJSWrapper
 
         $order->processed = $redisData['processed'];
         $order->status = 'processing';
-        $order->start_at = now();
+        $order->started_at = now();
 
         $bjsStatus = $this->bjsCli->changeStatus($order->bjs_id, 'processing');
         if ($bjsStatus) {
@@ -570,7 +548,7 @@ class BJSWrapper
 
         $order->processed = $redisData['processed'];
         $order->status = 'completed';
-        $order->start_at = $order->start_at ?? now();
+        $order->started_at = $order->started_at ?? now();
         $order->end_at = now();
 
         $bjsStatus = $this->bjsCli->changeStatus($order->bjs_id, 'completed');
@@ -593,7 +571,7 @@ class BJSWrapper
     private function updateToPartial($order, int $remainingCount): array
     {
         $order->status = 'partial';
-        $order->start_at = $order->start_at ?? now();
+        $order->started_at = $order->started_at ?? now();
         $order->end_at = now();
         $order->partial_count = $remainingCount;
 
@@ -615,7 +593,7 @@ class BJSWrapper
     private function updateToCancelled($order): array
     {
         $order->status = 'cancel';
-        $order->start_at = $order->start_at ?? now();
+        $order->started_at = $order->started_at ?? now();
         $order->end_at = now();
 
         $bjsStatus = $this->bjsCli->cancelOrder($order->bjs_id);

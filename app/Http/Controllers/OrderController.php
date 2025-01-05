@@ -25,6 +25,35 @@ class OrderController extends Controller
         $processeds = $this->orderService->getCachedOrders();
         $outSync = $this->orderService->getOutOfSyncOrders();
 
+        // Enhance order data with Redis information
+        $processeds = $processeds->map(function ($order) {
+            $this->orderService->setOrderID($order->id);
+            $redisData = $this->orderService->getOrderRedisKeys();
+
+            $order->redis_status = $redisData['status'];
+            $order->redis_processing = $redisData['processing'];
+            $order->redis_processed = $redisData['processed'];
+            $order->redis_failed = $redisData['failed'];
+            $order->redis_duplicate = $redisData['duplicate_interaction'];
+            $order->redis_requested = $redisData['requested'];
+
+            return $order;
+        });
+
+        $outSync = $outSync->map(function ($order) {
+            $this->orderService->setOrderID($order->id);
+            $redisData = $this->orderService->getOrderRedisKeys();
+
+            $order->redis_status = $redisData['status'];
+            $order->redis_processing = $redisData['processing'];
+            $order->redis_processed = $redisData['processed'];
+            $order->redis_failed = $redisData['failed'];
+            $order->redis_duplicate = $redisData['duplicate_interaction'];
+            $order->redis_requested = $redisData['requested'];
+
+            return $order;
+        });
+
         return view('pages.orders', [
             'processeds' => $processeds,
             'out_sync' => $outSync,

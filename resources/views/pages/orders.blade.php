@@ -23,10 +23,14 @@
                                     </th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Target
                                     </th>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status
-                                    </th>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Progress
-                                    </th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">DB
+                                        Status</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Redis
+                                        Status</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">DB
+                                        Progress</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Redis
+                                        Progress</th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Time
                                         Elapsed</th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Created
@@ -59,7 +63,7 @@
                                         </td>
                                         <td>
                                             <div class="d-flex px-2 py-1">
-                                                <a href="https://anon.ws/?to={{ urlencode($order->target) }}" target="_blank"
+                                                <a href="{{ $order->target }}" target="_blank"
                                                     class="text-primary text-xs font-weight-bold">
                                                     Target
                                                 </a>
@@ -74,6 +78,14 @@
                                             </div>
                                         </td>
                                         <td>
+                                            <div class="d-flex px-2 py-1">
+                                                <span
+                                                    class="badge badge-sm bg-gradient-{{ $order->redis_status === 'completed' ? 'success' : ($order->redis_status === 'processing' ? 'info' : 'warning') }}">
+                                                    {{ $order->redis_status }}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>
                                             <div class="d-flex px-2 py-1 flex-column">
                                                 <span class="text-secondary text-xs font-weight-bold">
                                                     {{ number_format($order->processed) }}/{{ number_format($order->requested) }}
@@ -82,6 +94,22 @@
                                                     class="text-xs {{ $order->processed >= $order->requested ? 'text-success' : 'text-warning' }}">
                                                     Margin: {{ number_format($order->requested - $order->processed) }}
                                                     left
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex px-2 py-1 flex-column">
+                                                <span class="text-secondary text-xs font-weight-bold">
+                                                    {{ number_format($order->redis_processed) }}/{{ number_format($order->redis_requested) }}
+                                                </span>
+                                                <span class="text-xs text-info">
+                                                    Processing: {{ number_format($order->redis_processing) }}
+                                                </span>
+                                                <span class="text-xs text-danger">
+                                                    Failed: {{ number_format($order->redis_failed) }}
+                                                </span>
+                                                <span class="text-xs text-warning">
+                                                    Duplicates: {{ number_format($order->redis_duplicate) }}
                                                 </span>
                                             </div>
                                         </td>
@@ -199,8 +227,8 @@
                                         </td>
                                         <td>
                                             <div class="d-flex px-2 py-1">
-                                                <a href="https://anon.ws/?to={{ urlencode($order->target) }}" target="_blank"
-                                                    class="text-primary text-xs font-weight-bold">
+                                                <a href="https://anon.ws/?to={{ urlencode($order->target) }}"
+                                                    target="_blank" class="text-primary text-xs font-weight-bold">
                                                     Target
                                                 </a>
                                             </div>
@@ -259,12 +287,12 @@
                         </div>
                     </div>
                     <div class="card-body p-3">
-                        @if(session('error'))
+                        @if (session('error'))
                             <div class="alert alert-danger">
                                 {{ session('error') }}
                             </div>
                         @endif
-                        @if(session('success'))
+                        @if (session('success'))
                             <div class="alert alert-success">
                                 {{ session('success') }}
                             </div>
@@ -287,8 +315,10 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="target" class="form-control-label">Target (Username/URL Post)</label>
-                                        <input class="form-control" type="text" name="target" id="target" required>
+                                        <label for="target" class="form-control-label">Target (Username/URL
+                                            Post)</label>
+                                        <input class="form-control" type="text" name="target" id="target"
+                                            required>
                                         @error('target')
                                             <span class="text-danger">{{ $message }}</span>
                                         @enderror
@@ -297,7 +327,8 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="requested" class="form-control-label">Quantity</label>
-                                        <input class="form-control" type="number" name="requested" id="requested" value="10" min="1" required>
+                                        <input class="form-control" type="number" name="requested" id="requested"
+                                            value="10" min="1" required>
                                         @error('requested')
                                             <span class="text-danger">{{ $message }}</span>
                                         @enderror

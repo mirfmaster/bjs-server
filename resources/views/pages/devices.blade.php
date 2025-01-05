@@ -20,10 +20,10 @@
                                             Status</th>
                                         <th
                                             class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
-                                            Version</th>
+                                            Mode</th>
                                         <th
                                             class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
-                                            Mode</th>
+                                            Version</th>
                                         <th
                                             class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
                                             Last Activity</th>
@@ -50,13 +50,16 @@
                                                 </span>
                                             </td>
                                             <td class="align-middle text-center">
-                                                <select class="form-control mode-selector"
-                                                    data-device-id="{{ $device->id }}">
-                                                    <option value="login"
-                                                        {{ $device->mode === 'login' ? 'selected' : '' }}>Login</option>
-                                                    <option value="worker"
-                                                        {{ $device->mode === 'worker' ? 'selected' : '' }}>Worker</option>
-                                                </select>
+                                                <div class="d-flex justify-content-center align-items-center">
+                                                    <select class="form-control form-control-sm mode-selector"
+                                                        data-device-id="{{ $device->id }}" style="max-width: 100px;">
+                                                        <option value="login"
+                                                            {{ $device->mode === 'login' ? 'selected' : '' }}>Login</option>
+                                                        <option value="worker"
+                                                            {{ $device->mode === 'worker' ? 'selected' : '' }}>Worker
+                                                        </option>
+                                                    </select>
+                                                </div>
                                             </td>
                                             <td class="align-middle text-center">
                                                 <span class="text-secondary text-xs font-weight-bold">
@@ -84,6 +87,34 @@
         </div>
         @include('layouts.footers.auth.footer')
     </div>
+
+    <!-- Success Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    Mode updated successfully
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    Failed to update mode. Please try again.
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('js')
@@ -92,6 +123,9 @@
             select.addEventListener('change', async function() {
                 const deviceId = this.dataset.deviceId;
                 const mode = this.value;
+                const originalValue = this.value;
+                const successToast = new bootstrap.Toast(document.getElementById('successToast'));
+                const errorToast = new bootstrap.Toast(document.getElementById('errorToast'));
 
                 try {
                     const response = await fetch(`/devices/${deviceId}/mode`, {
@@ -99,23 +133,28 @@
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                .content
+                                .content,
+                            'Accept': 'application/json'
                         },
                         body: JSON.stringify({
-                            mode
+                            mode: mode
                         })
                     });
 
-                    if (!response.ok) throw new Error('Network response was not ok');
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
 
                     const result = await response.json();
                     if (result.success) {
-                        // Optional: Show success toast/notification
+                        successToast.show();
+                    } else {
+                        throw new Error('Update failed');
                     }
                 } catch (error) {
                     console.error('Error:', error);
-                    this.value = this.value === 'login' ? 'worker' : 'login'; // Revert selection
-                    // Optional: Show error toast/notification
+                    this.value = originalValue; // Revert selection
+                    errorToast.show();
                 }
             });
         });

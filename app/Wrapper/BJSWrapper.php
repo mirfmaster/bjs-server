@@ -539,7 +539,10 @@ class BJSWrapper
      */
     private function updateToProcessing($order, int $remainingCount): array
     {
-        $order->processed = $order->getOrderRedisKeys()['processed'];
+        $this->order->setOrderID($order->id);
+        $redisData = $this->order->getOrderRedisKeys();
+
+        $order->processed = $redisData['processed'];
         $order->status = 'processing';
         $order->start_at = now();
 
@@ -562,7 +565,10 @@ class BJSWrapper
      */
     private function updateToCompleted($order, int $remainingCount): array
     {
-        $order->processed = $order->getOrderRedisKeys()['processed'];
+        $this->order->setOrderID($order->id);
+        $redisData = $this->order->getOrderRedisKeys();
+
+        $order->processed = $redisData['processed'];
         $order->status = 'completed';
         $order->start_at = $order->start_at ?? now();
         $order->end_at = now();

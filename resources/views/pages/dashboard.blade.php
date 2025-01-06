@@ -15,7 +15,8 @@
                                         {{ number_format($activeCounter) }}({{ number_format($loginCounter) }})
                                     </h5>
                                     <p class="mb-0">
-                                        <span class="text-success text-sm font-weight-bolder">{{ number_format($workerCounter) }}</span>
+                                        <span
+                                            class="text-success text-sm font-weight-bolder">{{ number_format($workerCounter) }}</span>
                                         Total workers
                                     </p>
                                 </div>
@@ -187,13 +188,12 @@
                         <div class="row">
                             <div class="col-8">
                                 <div class="numbers">
-                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Mismatch status</p>
-                                    <h5 class="font-weight-bolder">
-                                        {{ $orders['out_sync'] }}
-                                    </h5>
-                                    <p class="mb-0">
-                                        Out sync w/ BJS
-                                    </p>
+                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Today Orders</p>
+                                    @foreach ($statistics['order'] as $item)
+                                        <p class="mb-0">
+                                            {{ $item->kind }}: {{ $item->total_margin_requested }}
+                                        </p>
+                                    @endforeach
                                 </div>
                             </div>
                             <div class="col-4 text-end">

@@ -63,13 +63,6 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
 
         $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient());
 
-        $auth = $bjsWrapper->bjsService->auth();
-        if (! $auth) {
-            Log::warning('BJS is not authenticated, skipping process');
-
-            return;
-        }
-
         $bjsWrapper->fetchLikeOrder($watchlistLike);
         $bjsWrapper->fetchFollowOrder($watchlistFollow);
         // TODO: remove this since the one moving the status is worker

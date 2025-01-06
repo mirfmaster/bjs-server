@@ -418,6 +418,10 @@ class BJSWrapper
             case 'cancel':
                 $updateResult = $this->updateToCancelled($order);
                 break;
+
+            default:
+                Log::error("Unsupported Redis status encountered: $redisStatus", $context);
+                break;
         }
 
         Log::info("Updated order status from {$order->status} to {$redisStatus}", array_merge($context, [
@@ -557,6 +561,7 @@ class BJSWrapper
         }
 
         $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
+        $this->order->deleteOrderRedisKeys($order->id);
 
         return [
             'model_updated' => $order->save(),
@@ -579,6 +584,7 @@ class BJSWrapper
         if ($bjsStatus) {
             $order->status_bjs = 'partial';
         }
+        $this->order->deleteOrderRedisKeys($order->id);
 
         return [
             'model_updated' => $order->save(),
@@ -600,6 +606,7 @@ class BJSWrapper
         if ($bjsStatus) {
             $order->status_bjs = 'cancel';
         }
+        $this->order->deleteOrderRedisKeys($order->id);
 
         return [
             'model_updated' => $order->save(),

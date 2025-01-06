@@ -388,14 +388,11 @@ class BJSWrapper
             }
             Log::info('Processing direct order', $ctx);
 
-            $order->processing = $redisData['processing'];
             $order->processed = $redisData['processed'];
             $order->status = $redisStatus;
 
-            switch ($redisStatus) {
-                case 'partial':
-                    $order->partial_count = $order->requested - $order->processed;
-                    break;
+            if ($redisStatus == 'partial') {
+                $order->partial_count = $order->requested - $order->processed;
             }
 
             $order->end_at = now();
@@ -407,6 +404,9 @@ class BJSWrapper
                 'processed' => $order->processed,
                 'status' => $order->status,
             ]);
+
+            // NOTE: THIS ONLY for not processing case;
+            $this->order->deleteOrderRedisKeys($order->id);
 
             $this->order->updateCache();
             Log::info('======================'.PHP_EOL.PHP_EOL);

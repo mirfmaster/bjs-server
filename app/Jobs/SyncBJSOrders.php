@@ -75,5 +75,6 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         // TODO: remove this since the one moving the status is worker
         // $bjsWrapper->processCachedOrders();
         $bjsWrapper->processOrders();
+        $bjsWrapper->processDirectOrders();
     }
 }

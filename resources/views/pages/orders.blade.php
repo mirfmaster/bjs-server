@@ -23,10 +23,8 @@
                                     </th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Target
                                     </th>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">DB
-                                        Status</th>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Redis
-                                        Status</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"> Status
+                                    </th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">DB
                                         Progress</th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Redis
@@ -70,18 +68,18 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="d-flex px-2 py-1">
+                                            <div class="d-flex px-2 py-1 flex-column">
                                                 <span
-                                                    class="badge badge-sm bg-gradient-{{ $order->status === 'completed' ? 'success' : ($order->status === 'processing' ? 'info' : 'warning') }}">
-                                                    {{ $order->status }}
+                                                    class="text-xs {{ $order->status === 'completed' ? 'text-info' : ($order->status === 'processing' ? '' : 'text-danger') }}">
+                                                    DB: {{ $order->status }}
                                                 </span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex px-2 py-1">
                                                 <span
-                                                    class="badge badge-sm bg-gradient-{{ $order->redis_status === 'completed' ? 'success' : ($order->redis_status === 'processing' ? 'info' : 'warning') }}">
-                                                    {{ $order->redis_status }}
+                                                    class="text-xs {{ $order->redis_status === 'completed' ? 'text-info' : ($order->redis_status === 'processing' ? '' : 'text-danger') }}">
+                                                    Redis: {{ $order->redis_status }}
+                                                </span>
+                                                <span
+                                                    class="text-xs {{ $order->status_bjs === 'completed' ? 'text-info' : ($order->status_bjs === 'processing' ? '' : 'text-danger') }}">
+                                                    BJS: {{ $order->status_bjs }}
                                                 </span>
                                             </div>
                                         </td>

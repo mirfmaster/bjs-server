@@ -22,6 +22,7 @@ class OrderController extends Controller
 
     public function index()
     {
+        $this->orderService->updateCache();
         $processeds = $this->orderService->getCachedOrders();
         $outSync = $this->orderService->getOutOfSyncOrders();
 

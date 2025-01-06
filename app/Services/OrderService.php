@@ -11,7 +11,8 @@ class OrderService
 
     public function __construct(
         private Order $order
-    ) {}
+    ) {
+    }
 
     public function createAndUpdateCache(array $data)
     {
@@ -111,7 +112,7 @@ class OrderService
     {
         $lists = Redis::get('order:lists');
 
-        return $lists ? unserialize($lists) : [];
+        return $lists ? unserialize($lists) : collect([]);
     }
 
     public function isBlacklisted($pkID)

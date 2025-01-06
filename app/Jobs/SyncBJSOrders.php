@@ -69,5 +69,6 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         // $bjsWrapper->processCachedOrders();
         $bjsWrapper->processOrders();
         $bjsWrapper->processDirectOrders();
+        $bjsWrapper->handleServicesAvailability();
     }
 }

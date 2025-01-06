@@ -4,9 +4,11 @@ namespace App\Wrapper;
 
 use App\Client\BJSClient;
 use App\Client\UtilClient;
+use App\Models\Order;
 use App\Services\BJSService;
 use App\Services\OrderService;
 use App\Traits\LoggerTrait;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -768,5 +770,43 @@ class BJSWrapper
         }
 
         return $updateResult;
+    }
+
+    public function handleServicesAvailability(): void
+    {
+        Log::info('======================');
+        $baseContext = [
+            'process' => 'service-availabilty',
+        ];
+        $services = [
+            'follow' => [164],
+            'like' => [167],
+        ];
+        Log::info('Handling service availability');
+
+        $stats = Order::query()
+            ->whereDate('created_at', now()->toDateString())
+            ->select([
+                'kind',
+                DB::raw('COALESCE(SUM(requested), 0) as total_requested'),
+                DB::raw('COALESCE(SUM(margin_request), 0) as total_margin_requested'),
+            ])
+            ->groupBy('kind')
+            ->get();
+
+        foreach ($stats as $stat) {
+            Log::info("Processing order type: $stat->kind", array_merge($baseContext, ['stat' => $stat]));
+
+            if ($stat->total_requested >= 999999) {
+                $codes = $services[$stat->kind];
+                foreach ($codes as $code) {
+                    Log::info("Disabling service $code");
+                    $req = $this->bjsCli->changeStatusServices($code, false);
+                    Redis::set("system:disabled-service:$code", true);
+                    Log::info('result', array_merge($baseContext, ['result' => $req]));
+                }
+            }
+            Log::info('======================'.PHP_EOL.PHP_EOL);
+        }
     }
 }

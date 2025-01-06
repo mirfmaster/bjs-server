@@ -204,6 +204,7 @@ class OrderController extends Controller
     public function destroy(Order $order)
     {
         $order->delete();
+        $this->orderService->deleteOrderRedisKeys($order->id);
         $this->orderService->updateCache();
 
         return back()->with('success', 'Order deleted successfully');

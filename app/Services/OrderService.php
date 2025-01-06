@@ -144,6 +144,7 @@ class OrderService
         return Order::query()
             ->whereColumn('status', '!=', 'status_bjs')
             ->where('status', '!=', 'pending')
+            ->where('status', '==', 'bjs')
             ->get();
     }
 }

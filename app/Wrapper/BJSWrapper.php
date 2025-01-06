@@ -400,7 +400,7 @@ class BJSWrapper
             Log::info('Updating data', [
                 'update_model' => $order->save(),
                 'redis_status' => $redisStatus,
-                'processing' => $order->processing,
+                'processing' => $redisData['processing'],
                 'processed' => $order->processed,
                 'status' => $order->status,
             ]);

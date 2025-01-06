@@ -346,6 +346,73 @@ class BJSWrapper
         }
     }
 
+    public function processDirectOrders(): void
+    {
+        Log::info('======================');
+        $baseContext = [
+            'process' => 'process-direct-order',
+        ];
+        $orders = $this->order->getOrders();
+
+        Log::info("Found {$orders->count()} orders to process", $baseContext);
+
+        if ($orders->count() == 0) {
+            return;
+        }
+
+        foreach ($orders as $order) {
+            if ($order->source != 'direct') {
+                Log::info("Skipping order: $order->id source: $order->source");
+
+                continue;
+            }
+
+            $this->order->setOrderID($order->id);
+            $redisData = $this->order->getOrderRedisKeys();
+            $ctx = array_merge($baseContext, [
+                'orders' => $orders->only([
+                    'id',
+                    'kind',
+                    'username',
+                    'target',
+                ]),
+                'redis_data' => $redisData,
+
+            ]);
+
+            $redisStatus = $redisData['status'];
+            if ($order->status != 'processing' && $redisStatus == $order->status) {
+                Log::info("Skipping order due to status: $redisStatus");
+
+                continue;
+            }
+            Log::info('Processing direct order', $ctx);
+
+            $order->processing = $redisData['processing'];
+            $order->processed = $redisData['processed'];
+            $order->status = $redisStatus;
+
+            switch ($redisStatus) {
+                case 'partial':
+                    $order->partial_count = $order->requested - $order->processed;
+                    break;
+            }
+
+            $order->end_at = now();
+
+            Log::info('Updating data', [
+                'update_model' => $order->save(),
+                'redis_status' => $redisStatus,
+                'processing' => $order->processing,
+                'processed' => $order->processed,
+                'status' => $order->status,
+            ]);
+
+            $this->order->updateCache();
+            Log::info('======================'.PHP_EOL.PHP_EOL);
+        }
+    }
+
     /**
      * Process individual order status updates
      */
@@ -389,6 +456,7 @@ class BJSWrapper
                 Log::error('Unsupported Redis status encountered', $context);
                 break;
         }
+        $this->order->updateCache();
     }
 
     /**

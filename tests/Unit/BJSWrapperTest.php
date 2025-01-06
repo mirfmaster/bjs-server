@@ -19,10 +19,10 @@ class BJSWrapperTest extends TestCase
         parent::setUp();
 
         // Create real instances
-        $bjsClient = new BJSClient();
+        $bjsClient = new BJSClient;
         $bjsService = new BJSService($bjsClient);
-        $orderService = new OrderService(new \App\Models\Order(), new Redis());
-        $utilClient = new UtilClient();
+        $orderService = new OrderService(new \App\Models\Order, new Redis);
+        $utilClient = new UtilClient;
 
         $this->wrapper = new BJSWrapper(
             $bjsService,

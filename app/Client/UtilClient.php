@@ -153,6 +153,10 @@ class UtilClient
                         break;
                     }
 
+                    // unset($user['edge_owner_to_timeline_media']);
+                    // unset($user['edge_felix_video_timeline']);
+                    // dump($user);
+
                     // Return full user profile data
                     return (object) [
                         'username' => $username,

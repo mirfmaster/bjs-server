@@ -127,7 +127,6 @@ class BJSWrapper
 
             Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
-                dd($order);
                 $ctx = $context;
                 $ctx['orderData'] = [
                     'id' => $order->id,

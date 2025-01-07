@@ -15,6 +15,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
 {
@@ -53,22 +54,26 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
     public function handle()
     {
         Log::info('Starting job SyncBJSOrders');
-        $watchlistLike = [167];
-        $watchlistFollow = [164];
 
-        $bjsCli = new BJSClient();
+        $bjsCli = new BJSClient;
 
         $bjsService = new BJSService($bjsCli);
-        $orderService = new OrderService(new Order());
+        $orderService = new OrderService(new Order);
 
-        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient());
+        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient);
 
-        $bjsWrapper->fetchLikeOrder($watchlistLike);
-        $bjsWrapper->fetchFollowOrder($watchlistFollow);
-        // TODO: remove this since the one moving the status is worker
-        // $bjsWrapper->processCachedOrders();
-        $bjsWrapper->processOrders();
+        $loginStateBjs = Redis::get('system:bjs:login-state');
+        if ((bool) $loginStateBjs) {
+            $watchlistLike = [167];
+            $watchlistFollow = [164];
+            $bjsWrapper->fetchLikeOrder($watchlistLike);
+            $bjsWrapper->fetchFollowOrder($watchlistFollow);
+            $bjsWrapper->processOrders();
+            $bjsWrapper->handleServicesAvailability();
+        } else {
+            Log::info('Skipping BJS actions because login state is false, only processing direct order');
+        }
+
         $bjsWrapper->processDirectOrders();
-        $bjsWrapper->handleServicesAvailability();
     }
 }

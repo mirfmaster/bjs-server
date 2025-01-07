@@ -63,19 +63,19 @@
                                             <div class="d-flex px-2 py-1">
                                                 <a href="https://anon.ws/?to={{ urlencode($order->target) }}"
                                                     target="_blank" class="text-primary text-xs font-weight-bold">
-                                                    Target
+                                                    {{ $order->username }}
                                                 </a>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="d-flex px-2 py-1 flex-column">
                                                 <span
-                                                    class="text-xs {{ $order->status === 'completed' ? 'text-info' : ($order->status === 'processing' ? '' : 'text-danger') }}">
-                                                    DB: {{ $order->status }}
-                                                </span>
-                                                <span
                                                     class="text-xs {{ $order->redis_status === 'completed' ? 'text-info' : ($order->redis_status === 'processing' ? '' : 'text-danger') }}">
                                                     Redis: {{ $order->redis_status }}
+                                                </span>
+                                                <span
+                                                    class="text-xs {{ $order->status === 'completed' ? 'text-info' : ($order->status === 'processing' ? '' : 'text-danger') }}">
+                                                    DB: {{ $order->status }}
                                                 </span>
                                                 <span
                                                     class="text-xs {{ $order->status_bjs === 'completed' ? 'text-info' : ($order->status_bjs === 'processing' ? '' : 'text-danger') }}">

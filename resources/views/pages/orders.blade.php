@@ -254,14 +254,14 @@
                             <h6 class="mb-0">Order History</h6>
                             <div class="d-flex align-items-center">
                                 <form class="me-3 flex-grow-1" method="GET" action="{{ route('orders.index') }}">
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex gap-2 align-items-center">
                                         <div class="search-wrapper flex-grow-1" style="max-width: 400px;">
                                             <input type="text" name="search"
                                                 class="form-control form-control-lg border ps-3"
                                                 style="border-radius: 50px; height: 45px; background: white;"
                                                 placeholder="Search orders..." value="{{ $search }}">
                                         </div>
-                                        <button class="btn btn-primary px-4" style="border-radius: 50px;"
+                                        <button class="btn btn-primary px-4 mb-0" style="border-radius: 50px;"
                                             type="submit">Search</button>
                                     </div>
                                 </form>
@@ -363,10 +363,10 @@
                                             <div class="d-flex px-2 py-1 flex-column">
                                                 @if ($order->started_at)
                                                     <span class="text-secondary text-xs font-weight-bold">
-                                                        {{ $order->started_at->format('Y-m-d H:i') }}
+                                                        {{ $order->started_at?->format('Y-m-d H:i') }}
                                                     </span>
                                                     <span class="text-secondary text-xs font-weight-bold">
-                                                        {{ $order->end_at->format('Y-m-d H:i') }}
+                                                        {{ $order->end_at?->format('Y-m-d H:i') }}
                                                     </span>
                                                 @else
                                                     <span class="text-secondary text-xs">-</span>
@@ -377,11 +377,11 @@
                                             <div class="d-flex px-2 py-1">
                                                 @if ($order->started_at && $order->end_at)
                                                     <span class="text-secondary text-xs font-weight-bold">
-                                                        {{ $order->started_at->diffForHumans($order->end_at, true) }}
+                                                        {{ $order->started_at?->diffForHumans($order->end_at, true) }}
                                                     </span>
                                                 @elseif ($order->started_at)
                                                     <span class="text-secondary text-xs font-weight-bold">
-                                                        {{ $order->started_at->diffForHumans(now(), true) }}
+                                                        {{ $order->started_at?->diffForHumans(now(), true) }}
                                                     </span>
                                                 @else
                                                     <span class="text-secondary text-xs">-</span>
@@ -400,18 +400,108 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="card-footer pb-0">
-                        <div class="d-flex justify-content-center">
-                            {{ $history->links() }}
-                        </div>
-                        @if ($history->total() > 0)
-                            <div class="text-center text-sm text-gray-700 py-2">
-                                Showing {{ $history->firstItem() }} to {{ $history->lastItem() }} of
-                                {{ $history->total() }} results
+                    @if ($history->hasPages())
+                        <div class="card-footer pb-0">
+                            <div class="d-flex flex-column align-items-center">
+                                <!-- Pagination Controls -->
+                                <div class="d-flex gap-2 align-items-center mb-3">
+                                    <!-- Previous Page Link -->
+                                    @if ($history->onFirstPage())
+                                        <span class="btn btn-sm btn-outline-secondary disabled">« Previous</span>
+                                    @else
+                                        <a href="{{ $history->previousPageUrl() }}"
+                                            class="btn btn-sm btn-outline-secondary">
+                                            « Previous
+                                        </a>
+                                    @endif
+
+                                    <!-- Page Input -->
+                                    <div class="d-flex align-items-center gap-2" @style(['align-self: flex-start'])>
+                                        <input type="number" id="pageInput"
+                                            class="form-control form-control-sm text-center" style="width: 60px;"
+                                            value="{{ $history->currentPage() }}" min="1"
+                                            max="{{ $history->lastPage() }}">
+                                        <span class="text-sm text-secondary">of {{ $history->lastPage() }}</span>
+                                    </div>
+
+                                    <!-- Next Page Link -->
+                                    @if ($history->hasMorePages())
+                                        <a href="{{ $history->nextPageUrl() }}" class="btn btn-sm btn-outline-secondary">
+                                            Next »
+                                        </a>
+                                    @else
+                                        <span class="btn btn-sm btn-outline-secondary disabled">Next »</span>
+                                    @endif
+                                </div>
+
+                                <!-- Results Count Text -->
+                                <div class="text-sm text-secondary mb-3">
+                                    Showing {{ $history->firstItem() }} to {{ $history->lastItem() }} of
+                                    {{ $history->total() }} results
+                                </div>
                             </div>
-                        @endif
-                    </div>
+                        </div>
+
+                        <script>
+                            document.getElementById('pageInput').addEventListener('keypress', function(e) {
+                                if (e.key === 'Enter') {
+                                    const currentUrl = new URL(window.location.href);
+                                    const page = parseInt(this.value);
+                                    const maxPage = {{ $history->lastPage() }};
+
+                                    if (page >= 1 && page <= maxPage) {
+                                        currentUrl.searchParams.set('page', page);
+                                        window.location.href = currentUrl.toString();
+                                    } else {
+                                        this.value = {{ $history->currentPage() }};
+                                    }
+                                }
+                            });
+
+                            document.getElementById('pageInput').addEventListener('blur', function() {
+                                const page = parseInt(this.value);
+                                const maxPage = {{ $history->lastPage() }};
+
+                                if (page < 1 || page > maxPage || isNaN(page)) {
+                                    this.value = {{ $history->currentPage() }};
+                                }
+                            });
+                        </script>
+
+                        <style>
+                            .btn-outline-secondary {
+                                background: white;
+                                border-color: #dee2e6;
+                                color: #6c757d;
+                            }
+
+                            .btn-outline-secondary:hover:not(.disabled) {
+                                background: #f8f9fa;
+                                border-color: #dee2e6;
+                                color: #6c757d;
+                            }
+
+                            .btn-outline-secondary.disabled {
+                                opacity: 0.5;
+                                cursor: not-allowed;
+                            }
+
+                            .gap-2 {
+                                gap: 0.5rem;
+                            }
+
+                            #pageInput::-webkit-inner-spin-button,
+                            #pageInput::-webkit-outer-spin-button {
+                                -webkit-appearance: none;
+                                margin: 0;
+                            }
+
+                            #pageInput {
+                                -moz-appearance: textfield;
+                            }
+                        </style>
                 </div>
+                @endif
             </div>
         </div>
         @include('layouts.footers.auth.footer')

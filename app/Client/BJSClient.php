@@ -35,7 +35,7 @@ class BJSClient
         $this->baseUrl = config('app.bjs_api');
 
         // Initialize Redis-based cookie jar
-        $this->cookieJar = new RedisCookieJar();
+        $this->cookieJar = new RedisCookieJar;
 
         // Load saved auth state
         $this->loadAuthState();
@@ -92,7 +92,7 @@ class BJSClient
 
         // Add bearer token if available
         if ($this->bearerToken) {
-            $defaultHeaders['Authorization'] = 'Bearer ' . $this->bearerToken;
+            $defaultHeaders['Authorization'] = 'Bearer '.$this->bearerToken;
         }
 
         $this->cli = new Client([
@@ -243,10 +243,11 @@ class BJSClient
 
     public function setStartCount(int $id, int $start): bool
     {
+        $ctx = [
+            'form_params' => ['start_count' => $start],
+        ];
         try {
-            $response = $this->cliXML->post("/admin/api/orders/set-start-count/$id", [
-                'form_params' => ['start_count' => $start],
-            ]);
+            $response = $this->cliXML->post("/admin/api/orders/set-start-count/$id", $ctx);
 
             return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
@@ -258,14 +259,15 @@ class BJSClient
 
     public function setRemains(int $id, int $remains): bool
     {
+        $ctx = [
+            'form_params' => ['remains' => $remains],
+        ];
         try {
-            $response = $this->cliXML->post("/admin/api/orders/set-remains/$id", [
-                'form_params' => ['remains' => $remains],
-            ]);
+            $response = $this->cliXML->post("/admin/api/orders/set-remains/$id", $ctx);
 
             return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
-            $this->logError($th);
+            $this->logError($th, $ctx);
 
             return false;
         }
@@ -273,14 +275,15 @@ class BJSClient
 
     public function setPartial(int $id, int $remains): bool
     {
+        $ctx = [
+            'form_params' => ['remains' => $remains],
+        ];
         try {
-            $response = $this->cliXML->post("/admin/api/orders/set-partial/$id", [
-                'form_params' => ['remains' => $remains],
-            ]);
+            $response = $this->cliXML->post("/admin/api/orders/set-partial/$id", $ctx);
 
             return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
-            $this->logError($th);
+            $this->logError($th, $ctx);
 
             return false;
         }
@@ -301,10 +304,11 @@ class BJSClient
 
     public function changeStatus(int $id, string $status): bool
     {
+        $ctx = [
+            'form_params' => ['status' => $status],
+        ];
         try {
-            $response = $this->cliXML->post("/admin/api/orders/change-status/$id", [
-                'form_params' => ['status' => $status],
-            ]);
+            $response = $this->cliXML->post("/admin/api/orders/change-status/$id", $ctx);
 
             return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
@@ -316,10 +320,11 @@ class BJSClient
 
     public function changeStatusServices(int $id, bool $status): bool
     {
+        $ctx = [
+            'form_params' => ['status' => $status],
+        ];
         try {
-            $response = $this->cliXML->post("/admin/api/services/change-status/$id", [
-                'form_params' => ['status' => $status],
-            ]);
+            $response = $this->cliXML->post("/admin/api/services/change-status/$id", $ctx);
 
             return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {

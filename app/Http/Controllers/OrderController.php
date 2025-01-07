@@ -17,14 +17,36 @@ class OrderController extends Controller
 
     public function __construct()
     {
-        $this->orderService = new OrderService(new Order());
+        $this->orderService = new OrderService(new Order);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $this->orderService->updateCache();
+
+        $perPage = $request->input('per_page', 10);
+        $search = $request->input('search');
+
+        // History orders query
+        $historyQuery = Order::query()
+            ->whereNotIn('status', ['processing', 'inprogress'])
+            ->orderByDesc('id');
+
+        // Apply search if provided
+        if ($search) {
+            $historyQuery->where(function ($query) use ($search) {
+                $query->where('id', 'LIKE', "%{$search}%")
+                    ->orWhere('username', 'LIKE', "%{$search}%")
+                    ->orWhere('reseller_name', 'LIKE', "%{$search}%")
+                    ->orWhere('target', 'LIKE', "%{$search}%")
+                    ->orWhere('status', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Paginate history results
+        $history = $historyQuery->paginate($perPage)->withQueryString();
+
         $processeds = $this->orderService->getCachedOrders();
-        $outSync = $this->orderService->getOutOfSyncOrders();
 
         // Enhance order data with Redis information
         $processeds = $processeds->map(function ($order) {
@@ -41,23 +63,10 @@ class OrderController extends Controller
             return $order;
         });
 
-        $outSync = $outSync->map(function ($order) {
-            $this->orderService->setOrderID($order->id);
-            $redisData = $this->orderService->getOrderRedisKeys();
-
-            $order->redis_status = $redisData['status'];
-            $order->redis_processing = $redisData['processing'];
-            $order->redis_processed = $redisData['processed'];
-            $order->redis_failed = $redisData['failed'];
-            $order->redis_duplicate = $redisData['duplicate_interaction'];
-            $order->redis_requested = $redisData['requested'];
-
-            return $order;
-        });
-
         return view('pages.orders', [
             'processeds' => $processeds,
-            'out_sync' => $outSync,
+            'history' => $history,
+            'search' => $search,
         ]);
     }
 
@@ -75,7 +84,7 @@ class OrderController extends Controller
         $requested = $request->requested;
         $marginRequest = $requested + (ceil($requested * 0.1));
 
-        $order = new Order();
+        $order = new Order;
         $order->source = 'direct';
         $order->status = 'processing';
         $order->status_bjs = 'processing';
@@ -84,7 +93,7 @@ class OrderController extends Controller
         $order->requested = $requested;
         $order->margin_request = $marginRequest;
 
-        $bjsService = new BJSService(new BJSClient());
+        $bjsService = new BJSService(new BJSClient);
         $identifier = $bjsService->extractIdentifier($target);
 
         if ($type == 'follow') {

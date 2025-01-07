@@ -399,6 +399,7 @@ class BJSWrapper
 
             $order->processed = $redisData['processed'];
             $order->status = $redisStatus;
+            $order->status_bjs = $redisStatus;
 
             if ($redisStatus == 'partial') {
                 $order->partial_count = $order->requested - $order->processed;

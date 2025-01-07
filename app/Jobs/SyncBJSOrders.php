@@ -67,7 +67,7 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
             $watchlistLike = [167];
             $watchlistFollow = [164];
             $auth = $bjsWrapper->bjsService->auth();
-            if ($auth) {
+            if (! $auth) {
                 Log::warning('Job is failed');
 
                 return;

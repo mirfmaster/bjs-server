@@ -303,8 +303,10 @@
                                     <div class="form-group">
                                         <label for="type" class="form-control-label">Order Type</label>
                                         <select class="form-control" id="type" name="type" required>
-                                            <option value="follow">Follow</option>
-                                            <option value="like">Like</option>
+                                            <option value="follow" {{ old('type') == 'follow' ? 'selected' : '' }}>Follow
+                                            </option>
+                                            <option value="like" {{ old('type') == 'like' ? 'selected' : '' }}>Like
+                                            </option>
                                         </select>
                                         @error('type')
                                             <span class="text-danger">{{ $message }}</span>
@@ -316,7 +318,7 @@
                                         <label for="target" class="form-control-label">Target (Username/URL
                                             Post)</label>
                                         <input class="form-control" type="text" name="target" id="target"
-                                            required>
+                                            value="{{ old('target') }}" required>
                                         @error('target')
                                             <span class="text-danger">{{ $message }}</span>
                                         @enderror
@@ -326,7 +328,7 @@
                                     <div class="form-group">
                                         <label for="requested" class="form-control-label">Quantity</label>
                                         <input class="form-control" type="number" name="requested" id="requested"
-                                            value="10" min="1" required>
+                                            value="{{ old('requested', 10) }}" min="1" required>
                                         @error('requested')
                                             <span class="text-danger">{{ $message }}</span>
                                         @enderror

@@ -443,12 +443,13 @@ class BJSWrapper
 
         switch ($order->status) {
             case 'inprogress':
+            case 'processing':
                 $this->handleInProgressOrder($order, $redisData['status'], $remainingCount, $context);
                 break;
 
-            case 'processing':
-                $this->handleProcessingOrder($order, $remainingCount, $context);
-                break;
+                // case 'processing':
+                //     $this->handleProcessingOrder($order, $remainingCount, $context);
+                //     break;
 
             case 'completed':
                 $this->handleCompletedOrder($order, $remainingCount, $context);

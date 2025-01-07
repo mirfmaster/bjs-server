@@ -26,6 +26,7 @@ class Order extends Model
         'source',
         'status_bjs',
         'reseller_name',
+        'price',
     ];
 
     protected $casts = [

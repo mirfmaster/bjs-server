@@ -66,6 +66,13 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         if ((bool) $loginStateBjs) {
             $watchlistLike = [167];
             $watchlistFollow = [164];
+            $auth = $bjsWrapper->bjsService->auth();
+            if ($auth) {
+                Log::warning('Job is failed');
+
+                return;
+            }
+
             $bjsWrapper->fetchLikeOrder($watchlistLike);
             $bjsWrapper->fetchFollowOrder($watchlistFollow);
             $bjsWrapper->processOrders();

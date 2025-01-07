@@ -439,7 +439,7 @@ class BJSWrapper
 
         Log::info("Processing order #{$order->bjs_id}", $context);
 
-        $remainingCount = $redisData['requested'] - $redisData['processed'];
+        $remainingCount = max(0, $redisData['requested'] - $redisData['processed']);
 
         switch ($order->status) {
             case 'inprogress':

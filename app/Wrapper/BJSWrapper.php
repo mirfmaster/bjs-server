@@ -45,7 +45,7 @@ class BJSWrapper
                     'link' => $order->link,
                     'requested' => $order->count,
                 ];
-                Log::info('Prcessing order', $ctx);
+                Log::info('processing order like: ', $ctx);
 
                 $exist = $this->order->findBJSID($order->id);
                 if ($exist) {
@@ -80,7 +80,7 @@ class BJSWrapper
                     }
 
                     $ctx['info'] = $info;
-                    Log::info('Succesfully fetching info, setting start count and changing to inprogress', $ctx);
+                    Log::info('Succesfully fetching info, setting start count and changing to inprogress');
 
                     $this->bjsCli->setStartCount($order->id, $info->like_count);
                     sleep(1);
@@ -133,6 +133,7 @@ class BJSWrapper
                     'link' => $order->link,
                     'requested' => $order->count,
                 ];
+                Log::info('processing order follow: ', $ctx);
                 $exist = $this->order->findBJSID($order->id);
                 if ($exist) {
                     Log::warning('Order already exist, skipping...', $ctx);
@@ -152,6 +153,7 @@ class BJSWrapper
                     $info = $this->util->__IGGetInfo($username);
 
                     if (! $info->found) {
+                        Log::info('Userinfo is not found cancelling');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
@@ -171,6 +173,7 @@ class BJSWrapper
                         continue;
                     }
 
+                    Log::info('Succesfully fetching info, setting start count and changing to inprogress');
                     $start = $info->follower_count;
                     $this->bjsCli->setStartCount($order->id, $start);
                     $this->bjsCli->changeStatus($order->id, 'inprogress');

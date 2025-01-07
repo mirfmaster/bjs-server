@@ -34,7 +34,7 @@ class BJSWrapper
         foreach ($watchlists as $id) {
             $context['processID'] = $id;
 
-            Log::info('Getting orders with 0 status data', $context);
+            Log::info('Getting orders with status pending', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
 
             Log::info('Processing orders: '.count($orders), $context);
@@ -92,6 +92,8 @@ class BJSWrapper
                         'username' => $info->owner_username,
                         'instagram_user_id' => $info->owner_id,
                         'target' => $order->link,
+                        'reseller_username' => $order->user,
+                        'price' => $order->charge,
                         'media_id' => $info->media_id,
                         'start_count' => $info->like_count,
                         'requested' => $order->count,
@@ -120,11 +122,12 @@ class BJSWrapper
         foreach ($watchlists as $id) {
             $context['processID'] = $id;
 
-            Log::info('Getting orders with 0 status data', $context);
+            Log::info('Getting orders with status pending', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
 
             Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
+                dd($order);
                 $ctx = $context;
                 $ctx['orderData'] = [
                     'id' => $order->id,
@@ -180,6 +183,8 @@ class BJSWrapper
                         'username' => $username,
                         'instagram_user_id' => $info->pk,
                         'target' => $order->link,
+                        'reseller_username' => $order->user,
+                        'price' => $order->charge,
                         'start_count' => $start,
                         'requested' => $requested,
                         'margin_request' => UtilClient::withOrderMargin($requested),

@@ -24,7 +24,8 @@ class Order extends Model
         'started_at',
         'end_at',
         'source',
-        'status_bjs'
+        'status_bjs',
+        'reseller_name',
     ];
 
     protected $casts = [
@@ -36,7 +37,7 @@ class Order extends Model
         'bjs_id' => 'integer',
         'priority' => 'integer',
         'started_at' => 'datetime',
-        'end_at' => 'datetime'
+        'end_at' => 'datetime',
     ];
 
     // Default values
@@ -48,6 +49,6 @@ class Order extends Model
         'partial_count' => 0,
         'priority' => 0,
         'status' => 'pending',
-        'status_bjs' => 'pending'
+        'status_bjs' => 'pending',
     ];
 }

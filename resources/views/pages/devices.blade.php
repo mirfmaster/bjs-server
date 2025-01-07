@@ -45,19 +45,24 @@
                                             </td>
                                             <td>
                                                 <span
-                                                    class="badge badge-sm bg-gradient-{{ $device->status === 'active' ? 'success' : 'secondary' }}">
-                                                    {{ $device->status }}
+                                                    class="badge badge-sm bg-gradient-{{ $device->current_status === 'active' ? 'success' : 'secondary' }}">
+                                                    {{ $device->current_status }}
                                                 </span>
                                             </td>
                                             <td class="align-middle text-center">
-                                                <div class="d-flex justify-content-center align-items-center">
-                                                    <select class="form-control form-control-sm mode-selector"
-                                                        data-device-id="{{ $device->id }}" style="max-width: 100px;">
+                                                <div class="d-flex align-items-center justify-content-center">
+                                                    <span
+                                                        class="badge badge-sm me-2 bg-gradient-{{ $device->mode === 'login' ? 'info' : 'success' }}">
+                                                        {{ ucfirst($device->mode) }}
+                                                    </span>
+                                                    <select class="form-control form-control-sm w-50 mode-selector"
+                                                        data-device-id="{{ $device->id }}">
                                                         <option value="login"
-                                                            {{ $device->mode === 'login' ? 'selected' : '' }}>Login</option>
+                                                            {{ $device->mode === 'login' ? 'selected' : '' }}>Switch to
+                                                            Login</option>
                                                         <option value="worker"
-                                                            {{ $device->mode === 'worker' ? 'selected' : '' }}>Worker
-                                                        </option>
+                                                            {{ $device->mode === 'worker' ? 'selected' : '' }}>Switch to
+                                                            Worker</option>
                                                     </select>
                                                 </div>
                                             </td>

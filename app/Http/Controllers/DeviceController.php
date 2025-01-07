@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 
 class DeviceController extends Controller
@@ -11,6 +12,13 @@ class DeviceController extends Controller
     public function index()
     {
         $devices = Device::with('statistics')
+            ->addSelect([
+                '*',
+                DB::raw('CASE
+                WHEN last_activity >= NOW() - INTERVAL \'30 minutes\' THEN \'active\'
+                ELSE \'inactive\'
+            END as current_status'),
+            ])
             ->orderBy('last_activity', 'desc')
             ->get();
 
@@ -32,4 +40,3 @@ class DeviceController extends Controller
         return response()->json(['success' => true]);
     }
 }
-

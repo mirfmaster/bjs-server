@@ -3,6 +3,109 @@
 @section('content')
     @include('layouts.navbars.auth.topnav', ['title' => 'Workers'])
     <div class="container-fluid py-4">
+        {{-- Order sections --}}
+        <div class="row mt-3">
+            <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+                <div class="card">
+                    <div class="card-body p-3">
+                        <div class="row">
+                            <div class="col-8">
+                                <div class="numbers">
+                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Completed Orders</p>
+                                    <h5 class="font-weight-bolder">
+                                        {{ number_format($orders['completed']) }}
+                                    </h5>
+                                    <p class="mb-0">
+                                        <span class="text-success text-sm font-weight-bolder"><br></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <div class="icon icon-shape bg-gradient-primary shadow-primary text-center rounded-circle">
+                                    <i class="ni ni-money-coins text-lg opacity-10" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+                <div class="card">
+                    <div class="card-body p-3">
+                        <div class="row">
+                            <div class="col-8">
+                                <div class="numbers">
+                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Processing</p>
+                                    <h5 class="font-weight-bolder">
+                                        {{ number_format($orders['processing']) }}
+                                    </h5>
+                                    <p class="mb-0">
+                                        <span
+                                            class="text-success text-sm font-weight-bolder">{{ number_format($orders['inprogress']) }}</span>
+                                        In progress
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <div class="icon icon-shape bg-gradient-danger shadow-danger text-center rounded-circle">
+                                    <i class="ni ni-world text-lg opacity-10" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+                <div class="card">
+                    <div class="card-body p-3">
+                        <div class="row">
+                            <div class="col-8">
+                                <div class="numbers">
+                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Cancelled Order</p>
+                                    <h5 class="font-weight-bolder">
+                                        {{ number_format($orders['canceled']) }}
+                                    </h5>
+                                    <p class="mb-0">
+                                        <span
+                                            class="text-danger text-sm font-weight-bolder">{{ number_format($orders['partial']) }}</span>
+                                        Partialled
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <div class="icon icon-shape bg-gradient-success shadow-success text-center rounded-circle">
+                                    <i class="ni ni-paper-diploma text-lg opacity-10" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-sm-6">
+                <div class="card">
+                    <div class="card-body p-3">
+                        <div class="row">
+                            <div class="col-8">
+                                <div class="numbers">
+                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Today Orders</p>
+                                    @foreach ($statistics['order'] as $item)
+                                        <p class="mb-0">
+                                            {{ $item->kind }}: {{ $item->total_margin_requested }}
+                                        </p>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <div class="icon icon-shape bg-gradient-warning shadow-warning text-center rounded-circle">
+                                    <i class="ni ni-cart text-lg opacity-10" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Create Order Section -->
         <div class="row mt-4">
             <div class="col-lg-12 mb-lg-0 mb-4">
@@ -86,7 +189,8 @@
                         <table class="table align-items-center">
                             <thead>
                                 <tr>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Order ID
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Order
+                                        ID
                                     </th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Source
                                     </th>

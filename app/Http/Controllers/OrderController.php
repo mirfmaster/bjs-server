@@ -8,6 +8,7 @@ use App\Services\BJSService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
 
@@ -63,10 +64,39 @@ class OrderController extends Controller
             return $order;
         });
 
+        $orderCompleted = Order::query()->where('status', 'completed')->count();
+        $orderProgress = Order::query()->where('status', 'inprogress')->count();
+        $orderProcessing = Order::query()->where('status', 'processing')->count();
+        $orderCanceled = Order::query()->where('status', 'canceled')->count();
+        $orderPartialled = Order::query()->where('status', 'partial')->count();
+
+        // Statistics
+        $orderStats = Order::query()
+            ->whereDate('created_at', now()->toDateString())
+            ->select([
+                'kind',
+                DB::raw('COALESCE(SUM(requested), 0) as total_requested'),
+                DB::raw('COALESCE(SUM(margin_request), 0) as total_margin_requested'),
+            ])
+            ->groupBy('kind')
+            ->get();
+
         return view('pages.orders', [
             'processeds' => $processeds,
             'history' => $history,
             'search' => $search,
+            // Order Section
+            'orders' => [
+                'completed' => $orderCompleted,
+                'inprogress' => $orderProgress,
+                'processing' => $orderProcessing,
+                'canceled' => $orderCanceled,
+                'partial' => $orderPartialled,
+            ],
+            // Statistics
+            'statistics' => [
+                'order' => $orderStats,
+            ],
         ]);
     }
 

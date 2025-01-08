@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Device;
-use App\Models\Order;
 use App\Models\Worker;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 
 class HomeController extends Controller
@@ -39,12 +37,6 @@ class HomeController extends Controller
         $loginStateBjs = Redis::get('system:bjs:login-state') ? 'True' : 'False';
         $workerVersion = Redis::get('system:worker:version') ?? 'Not set';
 
-        $orderCompleted = Order::query()->where('status', 'completed')->count();
-        $orderProgress = Order::query()->where('status', 'inprogress')->count();
-        $orderProcessing = Order::query()->where('status', 'processing')->count();
-        $orderCanceled = Order::query()->where('status', 'canceled')->count();
-        $orderPartialled = Order::query()->where('status', 'partial')->count();
-
         // Get all devices and count their states
         $sixHoursAgo = Carbon::now()->subHours(6);
         $devices = Device::query();
@@ -57,18 +49,6 @@ class HomeController extends Controller
         $workerModeCount = Device::where('mode', 'worker')->count();
         $loginModeCount = Device::where('mode', 'login')->count();
 
-        // Statistics
-        $orderStats = Order::query()
-            ->whereDate('created_at', now()->toDateString())
-            ->select([
-                'kind',
-                DB::raw('COALESCE(SUM(requested), 0) as total_requested'),
-                DB::raw('COALESCE(SUM(margin_request), 0) as total_margin_requested'),
-                // DB::raw('COUNT(*) as total_orders'),
-            ])
-            ->groupBy('kind')
-            ->get();
-
         return view('pages.dashboard', [
             'workerCounter' => $workerCounters,
             'activeCounter' => $activeWorkerCounter,
@@ -76,16 +56,6 @@ class HomeController extends Controller
             'newWorkers' => $newWorkers,
             'loginStateBjs' => $loginStateBjs,
             'workerVersion' => $workerVersion,
-
-            // Order Section
-            'orders' => [
-                'completed' => $orderCompleted,
-                'inprogress' => $orderProgress,
-                'processing' => $orderProcessing,
-                'canceled' => $orderCanceled,
-                'partial' => $orderPartialled,
-                // 'out_sync' => $mismatchedOrders,
-            ],
 
             // Devices Section
             'devices' => [
@@ -96,10 +66,6 @@ class HomeController extends Controller
                 'login' => $loginModeCount,
             ],
 
-            // Statistics
-            'statistics' => [
-                'order' => $orderStats,
-            ],
         ]);
     }
 }

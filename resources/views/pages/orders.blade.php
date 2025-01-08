@@ -218,7 +218,8 @@
                                         <td>
                                             <div class="d-flex px-2 py-1">
                                                 <span
-                                                    class="text-secondary text-xs font-weight-bold">#{{ $order->id }}</span>
+                                                    class="text-secondary text-xs font-weight-bold">{{ $loop->iteration }}.
+                                                    #{{ $order->id }}</span>
                                             </div>
                                         </td>
                                         <td>

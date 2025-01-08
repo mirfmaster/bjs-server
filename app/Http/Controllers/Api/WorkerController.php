@@ -4,11 +4,35 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Worker;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class WorkerController extends Controller
 {
+    public function index()
+    {
+        $statusCounts = Worker::query()
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->orderByRaw("array_position(
+                ARRAY['active', 'relogin', 'new_login']
+            , status), status")
+            ->get();
+        $workerCounters = Worker::query()->count();
+        $newWorkers = Worker::query()
+            ->where('status', 'new_login')
+            ->whereDate('created_at', Carbon::today())
+            ->count();
+
+        return view('pages.workers', [
+            'total' => $workerCounters,
+            'statusCounts' => $statusCounts,
+            'newWorkers' => $newWorkers,
+        ]);
+    }
+
     public function getInfo(Request $request): JsonResponse
     {
         $query = Worker::query();
@@ -63,7 +87,7 @@ class WorkerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update worker status: ' . $e->getMessage(),
+                'message' => 'Failed to update worker status: '.$e->getMessage(),
             ], 500);
         }
     }

@@ -5,32 +5,6 @@
     <div class="container-fluid py-4">
         <div class="row">
             <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-                <div class="card">
-                    <div class="card-body p-3">
-                        <div class="row">
-                            <div class="col-8">
-                                <div class="numbers">
-                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Active Workers</p>
-                                    <h5 class="font-weight-bolder">
-                                        {{ number_format($activeCounter) }}({{ number_format($loginCounter) }})
-                                    </h5>
-                                    <p class="mb-0">
-                                        <span
-                                            class="text-success text-sm font-weight-bolder">{{ number_format($workerCounter) }}</span>
-                                        Total workers
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <div class="icon icon-shape bg-gradient-primary shadow-primary text-center rounded-circle">
-                                    <i class="ni ni-money-coins text-lg opacity-10" aria-hidden="true"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
                 <div class="card" style="cursor: pointer;" onclick="document.getElementById('toggleForm').submit();">
                     <div class="card-body p-3">
                         <div class="row">
@@ -56,30 +30,6 @@
                 <form id="toggleForm" action="{{ route('system.toggle-bjs-login') }}" method="POST" class="d-none">
                     @csrf
                 </form>
-            </div>
-            <div class="col-xl-3 col-sm-6">
-                <div class="card">
-                    <div class="card-body p-3">
-                        <div class="row">
-                            <div class="col-8">
-                                <div class="numbers">
-                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">New Workers</p>
-                                    <h5 class="font-weight-bolder">
-                                        {{ $newWorkers }}
-                                    </h5>
-                                    <p class="mb-0">
-                                        <span class="text-success text-sm font-weight-bolder"><br></span>
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <div class="icon icon-shape bg-gradient-warning shadow-warning text-center rounded-circle">
-                                    <i class="ni ni-cart text-lg opacity-10" aria-hidden="true"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 

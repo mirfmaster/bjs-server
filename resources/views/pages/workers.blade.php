@@ -3,6 +3,32 @@
 @section('content')
     @include('layouts.navbars.auth.topnav', ['title' => 'Workers'])
     <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-xl-3 col-sm-6">
+                <div class="card">
+                    <div class="card-body p-3">
+                        <div class="row">
+                            <div class="col-8">
+                                <div class="numbers">
+                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">New Workers</p>
+                                    <h5 class="font-weight-bolder">
+                                        {{ $newWorkers }}
+                                    </h5>
+                                    <p class="mb-0">
+                                        <span class="text-success text-sm font-weight-bolder"><br></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <div class="icon icon-shape bg-gradient-warning shadow-warning text-center rounded-circle">
+                                    <i class="ni ni-cart text-lg opacity-10" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="row mt-4">
             <div class="col-lg-7 mb-lg-0 mb-4">
                 <div class="card ">
@@ -24,11 +50,24 @@
                                         <td>
                                             <div class="text-center">
                                                 <p class="text-xs font-weight-bold mb-0">Count:</p>
-                                                <h6 class="text-sm mb-0">{{ $status->count }}</h6>
+                                                <h6 class="text-sm mb-0">{{ number_format($status->count) }}</h6>
                                             </div>
                                         </td>
                                     </tr>
                                 @endforeach
+                                <tr>
+                                    <td class="w-30">
+                                        <div class="d-flex px-2 py-1 ">
+                                            Total
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-center">
+                                            <p class="text-xs font-weight-bold mb-0">Count:</p>
+                                            <h6 class="text-sm mb-0">{{ number_format($total) }}</h6>
+                                        </div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>

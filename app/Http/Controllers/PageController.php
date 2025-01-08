@@ -2,9 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Worker;
-use Illuminate\Support\Facades\DB;
-
 class PageController extends Controller
 {
     /**
@@ -45,21 +42,6 @@ class PageController extends Controller
     public function signup()
     {
         return view('pages.sign-up-static');
-    }
-
-    public function workers()
-    {
-        $statusCounts = Worker::query()
-            ->select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->orderByRaw("array_position(
-                ARRAY['active', 'relogin', 'new_login']
-            , status), status")
-            ->get();
-
-        return view('pages.workers', [
-            'statusCounts' => $statusCounts,
-        ]);
     }
 
     public function apiDocs()

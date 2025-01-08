@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\WorkerController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LoginController;
@@ -43,7 +44,8 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('/profile-static', [PageController::class, 'profile'])->name('profile-static');
     Route::get('/sign-in-static', [PageController::class, 'signin'])->name('sign-in-static');
     Route::get('/sign-up-static', [PageController::class, 'signup'])->name('sign-up-static');
-    Route::get('/workers', [PageController::class, 'workers'])->name('workers');
+
+    Route::get('/workers', [WorkerController::class, 'index'])->name('workers');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');

@@ -37,7 +37,7 @@ class BJSWrapper
             Log::info('Getting orders with status pending', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info('Processing orders: ' . count($orders), $context);
+            Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -125,7 +125,7 @@ class BJSWrapper
             Log::info('Getting orders with status pending', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
 
-            Log::info('Processing orders: ' . count($orders), $context);
+            Log::info('Processing orders: '.count($orders), $context);
             foreach ($orders as $order) {
                 $ctx = $context;
                 $ctx['orderData'] = [
@@ -160,14 +160,14 @@ class BJSWrapper
                     }
 
                     if ($this->order->isBlacklisted($info->pk)) {
-                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is blacklisted');
+                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is blacklisted');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
                     }
 
                     if ($info->is_private) {
-                        Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is private');
+                        Log::info('Fetch Follow Orders, ID: '.$order->id.' user is private');
                         $this->bjsCli->cancelOrder($order->id);
 
                         continue;
@@ -212,7 +212,7 @@ class BJSWrapper
         $orders = $this->order->getCachedOrders();
 
         $orderCount = $orders->count();
-        Log::info('Cached order count: ' . $orderCount, $context);
+        Log::info('Cached order count: '.$orderCount, $context);
 
         if ($orderCount == 0) {
             return;
@@ -220,7 +220,7 @@ class BJSWrapper
 
         foreach ($orders as $o) {
             $this->processCachedOrder($o, $context);
-            Log::info('======================' . PHP_EOL . PHP_EOL);
+            Log::info('======================'.PHP_EOL.PHP_EOL);
         }
     }
 
@@ -351,7 +351,7 @@ class BJSWrapper
                 return;
             }
             $this->processOrderStatus($order, $baseContext);
-            Log::info('======================' . PHP_EOL . PHP_EOL);
+            Log::info('======================'.PHP_EOL.PHP_EOL);
         }
     }
 
@@ -419,7 +419,7 @@ class BJSWrapper
             $this->order->deleteOrderRedisKeys($order->id);
 
             $this->order->updateCache();
-            Log::info('======================' . PHP_EOL . PHP_EOL);
+            Log::info('======================'.PHP_EOL.PHP_EOL);
         }
     }
 
@@ -494,7 +494,7 @@ class BJSWrapper
                 $updateResult = $this->updateToPartial($order, $remainingCount);
                 break;
 
-            case 'cancel':
+            case 'canceled':
                 $updateResult = $this->updateToCancelled($order);
                 break;
 
@@ -815,7 +815,7 @@ class BJSWrapper
                     Log::info('result', array_merge($baseContext, ['result' => $req]));
                 }
             }
-            Log::info('======================' . PHP_EOL . PHP_EOL);
+            Log::info('======================'.PHP_EOL.PHP_EOL);
         }
     }
 }

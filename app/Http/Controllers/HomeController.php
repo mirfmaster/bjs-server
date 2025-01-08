@@ -34,7 +34,6 @@ class HomeController extends Controller
             ->whereDate('created_at', Carbon::today())
             ->count();
         $loginStateBjs = Redis::get('system:bjs:login-state') ? 'True' : 'False';
-        $workerVersion = Redis::get('system:worker:version') ?? 'Not set';
 
         return view('pages.dashboard', [
             'workerCounter' => $workerCounters,
@@ -42,7 +41,6 @@ class HomeController extends Controller
             'loginCounter' => $loginRequiredCounter,
             'newWorkers' => $newWorkers,
             'loginStateBjs' => $loginStateBjs,
-            'workerVersion' => $workerVersion,
 
         ]);
     }

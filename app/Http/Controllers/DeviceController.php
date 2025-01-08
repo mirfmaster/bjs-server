@@ -35,6 +35,8 @@ class DeviceController extends Controller
         $workerModeCount = Device::where('mode', 'worker')->count();
         $loginModeCount = Device::where('mode', 'login')->count();
 
+        $workerVersion = Redis::get('system:worker:version') ?? 'Not set';
+
         return view('pages.devices', [
             'devices' => $devices,
             // Devices Section
@@ -45,7 +47,7 @@ class DeviceController extends Controller
                 'worker' => $workerModeCount,
                 'login' => $loginModeCount,
             ],
-
+            'workerVersion' => $workerVersion,
         ]);
     }
 

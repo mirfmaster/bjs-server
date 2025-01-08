@@ -205,63 +205,63 @@ class BJSWrapper
         }
     }
 
-    public function processCachedOrders()
-    {
-        Log::info('======================');
-        $context = ['process' => 'check-cached-order'];
-        $orders = $this->order->getCachedOrders();
-
-        $orderCount = $orders->count();
-        Log::info('Cached order count: '.$orderCount, $context);
-
-        if ($orderCount == 0) {
-            return;
-        }
-
-        foreach ($orders as $o) {
-            $this->processCachedOrder($o, $context);
-            Log::info('======================'.PHP_EOL.PHP_EOL);
-        }
-    }
-
-    /**
-     * Process individual order and update its status
-     */
-    private function processCachedOrder($order, array $baseContext): void
-    {
-        // TODO: instead handling based on status, what about sync it from redis status -> db status -> bjs_status
-        // STATUS MOVER SHOULD USE RASPI AS THE MOVER
-        $this->order->setOrderID($order->id);
-        $redisData = $this->order->getOrderRedisKeys();
-
-        $context = array_merge($baseContext, [
-            'order_id' => $order->id,
-            'bjs_id' => $order->bjs_id,
-            'redis_data' => $redisData,
-        ]);
-
-        Log::info("Processing order #{$order->bjs_id}", $context);
-
-        $remainingCount = $redisData['requested'] - $redisData['processed'];
-
-        switch ($redisData['status']) {
-            case 'inprogress':
-                $this->handleInProgressCache($remainingCount, $context);
-                break;
-
-            case 'processing':
-                $this->handleProcessingCache($remainingCount, $redisData, $context);
-                break;
-
-            case 'completed':
-                $this->handleProcessingCache($remainingCount, $redisData, $context);
-                break;
-
-            default:
-                Log::error('Status redis is not supported yet!', $context);
-                break;
-        }
-    }
+    // public function processCachedOrders()
+    // {
+    //     Log::info('======================');
+    //     $context = ['process' => 'check-cached-order'];
+    //     $orders = $this->order->getCachedOrders();
+    //
+    //     $orderCount = $orders->count();
+    //     Log::info('Cached order count: '.$orderCount, $context);
+    //
+    //     if ($orderCount == 0) {
+    //         return;
+    //     }
+    //
+    //     foreach ($orders as $o) {
+    //         $this->processCachedOrder($o, $context);
+    //         Log::info('======================'.PHP_EOL.PHP_EOL);
+    //     }
+    // }
+    //
+    // /**
+    //  * Process individual order and update its status
+    //  */
+    // private function processCachedOrder($order, array $baseContext): void
+    // {
+    //     // TODO: instead handling based on status, what about sync it from redis status -> db status -> bjs_status
+    //     // STATUS MOVER SHOULD USE RASPI AS THE MOVER
+    //     $this->order->setOrderID($order->id);
+    //     $redisData = $this->order->getOrderRedisKeys();
+    //
+    //     $context = array_merge($baseContext, [
+    //         'order_id' => $order->id,
+    //         'bjs_id' => $order->bjs_id,
+    //         'redis_data' => $redisData,
+    //     ]);
+    //
+    //     Log::info("Processing order #{$order->bjs_id}", $context);
+    //
+    //     $remainingCount = $redisData['requested'] - $redisData['processed'];
+    //
+    //     switch ($redisData['status']) {
+    //         case 'inprogress':
+    //             $this->handleInProgressCache($remainingCount, $context);
+    //             break;
+    //
+    //         case 'processing':
+    //             $this->handleProcessingCache($remainingCount, $redisData, $context);
+    //             break;
+    //
+    //         case 'completed':
+    //             $this->handleProcessingCache($remainingCount, $redisData, $context);
+    //             break;
+    //
+    //         default:
+    //             Log::error('Status redis is not supported yet!', $context);
+    //             break;
+    //     }
+    // }
 
     /**
      * NOTE:
@@ -456,11 +456,12 @@ class BJSWrapper
                 break;
 
             case 'partial':
-                $this->handleCompletedOrder($order, $remainingCount, $context);
+                $this->handlePartialOrder($order, $remainingCount, $context);
                 break;
 
             case 'cancel':
-                $this->handleCompletedOrder($order, $remainingCount, $context);
+            case 'canceled':
+                $this->handleCancelOrder($order, $remainingCount, $context);
                 break;
 
             default:
@@ -494,6 +495,7 @@ class BJSWrapper
                 $updateResult = $this->updateToPartial($order, $remainingCount);
                 break;
 
+            case 'cancel':
             case 'canceled':
                 $updateResult = $this->updateToCancelled($order);
                 break;

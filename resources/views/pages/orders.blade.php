@@ -90,7 +90,7 @@
                                     <p class="text-sm mb-0 text-uppercase font-weight-bold">Today Orders</p>
                                     @foreach ($statistics['order'] as $item)
                                         <p class="mb-0">
-                                            {{ $item->kind }}: {{ $item->total_margin_requested }}
+                                            {{ $item->kind }}: {{ number_format($item->total_requested) }}
                                         </p>
                                     @endforeach
                                 </div>

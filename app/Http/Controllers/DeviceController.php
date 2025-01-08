@@ -25,10 +25,10 @@ class DeviceController extends Controller
 
         // Get all devices and count their states
         $sixHoursAgo = Carbon::now()->subMinutes(30);
-        $devices = Device::query();
+        $deviceQuery = Device::query();
 
-        $totalDevices = $devices->count();
-        $inactiveDevices = $devices->where('last_activity', '<', $sixHoursAgo)->count();
+        $totalDevices = $deviceQuery->count();
+        $inactiveDevices = $deviceQuery->where('last_activity', '<', $sixHoursAgo)->count();
         $activeDevices = $totalDevices - $inactiveDevices;
 
         // Count devices by mode

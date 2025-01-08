@@ -38,6 +38,7 @@ class OrderController extends Controller
             $historyQuery->where(function ($query) use ($search) {
                 $query->where('id', 'LIKE', "%{$search}%")
                     ->orWhere('username', 'LIKE', "%{$search}%")
+                    ->orWhere('bjs_id', 'LIKE', "%{$search}%")
                     ->orWhere('reseller_name', 'LIKE', "%{$search}%")
                     ->orWhere('target', 'LIKE', "%{$search}%")
                     ->orWhere('status', 'LIKE', "%{$search}%");

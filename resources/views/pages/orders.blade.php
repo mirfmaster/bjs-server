@@ -239,8 +239,8 @@
                                         </td>
                                         <td>
                                             <div class="d-flex px-2 py-1">
-                                                <a href="https://anon.ws/?to={{ urlencode($order->target) }}"
-                                                    target="_blank" class="text-primary text-xs font-weight-bold">
+                                                <a href="{{ $order->getAnonymizedUrl() }}" target="_blank"
+                                                    class="text-primary text-xs font-weight-bold">
                                                     {{ $order->username }}
                                                 </a>
                                             </div>
@@ -438,9 +438,9 @@
                                         </td>
                                         <td>
                                             <div class="d-flex px-2 py-1">
-                                                <a href="{{ $order->target }}" target="_blank"
+                                                <a href="{{ $order->getAnonymizedUrl() }}" target="_blank"
                                                     class="text-primary text-xs font-weight-bold">
-                                                    Target
+                                                    {{ $order->username }}
                                                 </a>
                                             </div>
                                         </td>

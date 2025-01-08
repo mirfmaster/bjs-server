@@ -52,4 +52,22 @@ class Order extends Model
         'status' => 'pending',
         'status_bjs' => 'pending',
     ];
+
+    /**
+     * Get the complete Instagram URL for the target
+     */
+    public function getInstagramUrl(): string
+    {
+        return filter_var($this->target, FILTER_VALIDATE_URL)
+            ? $this->target
+            : "https://instagram.com/{$this->target}";
+    }
+
+    /**
+     * Get the anonymized URL for the target
+     */
+    public function getAnonymizedUrl(): string
+    {
+        return 'https://anon.ws/?to='.urlencode($this->getInstagramUrl());
+    }
 }

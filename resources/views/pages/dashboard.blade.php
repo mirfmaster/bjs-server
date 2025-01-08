@@ -31,7 +31,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-                <div class="card">
+                <div class="card" style="cursor: pointer;" onclick="document.getElementById('toggleForm').submit();">
                     <div class="card-body p-3">
                         <div class="row">
                             <div class="col-8">
@@ -53,6 +53,9 @@
                         </div>
                     </div>
                 </div>
+                <form id="toggleForm" action="{{ route('system.toggle-bjs-login') }}" method="POST" class="d-none">
+                    @csrf
+                </form>
             </div>
             <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
                 <div class="card">

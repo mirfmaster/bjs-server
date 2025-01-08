@@ -5,6 +5,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\SystemController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,7 @@ Route::group(['middleware' => 'auth'], function () {
     Route::post('/devices/{device}/mode', [DeviceController::class, 'updateMode'])->name('devices.mode');
 
     Route::get('/api-docs', [PageController::class, 'apiDocs'])->name('api-docs');
+    Route::post('/system/toggle-bjs-login', [SystemController::class, 'toggleBJSLoginState'])->name('system.toggle-bjs-login');
 
     Route::get('/{page}', [PageController::class, 'index'])->name('page');
     Route::post('logout', [LoginController::class, 'logout'])->name('logout');

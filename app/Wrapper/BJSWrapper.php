@@ -80,7 +80,9 @@ class BJSWrapper
                     }
 
                     $ctx['info'] = $info;
-                    Log::info('Succesfully fetching info, setting start count and changing to inprogress');
+                    Log::info('Succesfully fetching info, setting start count and changing to inprogress', [
+                        'start_count' => $info->like_count,
+                    ]);
 
                     $this->bjsCli->setStartCount($order->id, $info->like_count);
                     sleep(1);
@@ -609,12 +611,11 @@ class BJSWrapper
         $order->status = 'processing';
         $order->started_at = now();
 
+        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
         $bjsStatus = $this->bjsCli->changeStatus($order->bjs_id, 'processing');
         if ($bjsStatus) {
             $order->status_bjs = 'processing';
         }
-
-        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
 
         return [
             'model_updated' => $order->save(),
@@ -636,12 +637,12 @@ class BJSWrapper
         $order->started_at = $order->started_at ?? now();
         $order->end_at = now();
 
+        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
         $bjsStatus = $this->bjsCli->changeStatus($order->bjs_id, 'completed');
         if ($bjsStatus) {
             $order->status_bjs = 'completed';
         }
 
-        $remainingUpdated = $this->bjsCli->setRemains($order->bjs_id, $remainingCount);
         $this->order->deleteOrderRedisKeys($order->id);
 
         return [

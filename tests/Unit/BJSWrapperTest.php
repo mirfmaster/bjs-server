@@ -119,6 +119,32 @@ class BJSWrapperTest extends TestCase
 
     /**
      * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_set_remains
+     */
+    public function test_set_remains(): void
+    {
+        // $this->markTestSkipped('Remove this line to run the test.');
+
+        $this->wrapper->bjsService->auth();
+        // Execute the actual fetch
+
+        $this->wrapper->bjsService->bjs->changeStatus('4722844', 'pending');
+
+        // NOTE: completed case
+        $this->wrapper->bjsService->bjs->setRemains('4722844', 99);
+
+        // // NOTE: completed case
+        // $this->wrapper->bjsService->bjs->setRemains('4718465', 1);
+        //
+        // // NOTE: completed case
+        // $this->wrapper->bjsService->bjs->setRemains('4718465', 1);
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
+
+    /**
+     * To run this test:
      * php artisan test --filter=BJSWrapperTest::test_fetch_all
      */
     public function test_fetch_all(): void

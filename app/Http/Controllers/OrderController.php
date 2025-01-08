@@ -213,9 +213,18 @@ class OrderController extends Controller
 
     public function destroy(Order $order)
     {
+        if ($order->source === 'bjs' && ! (bool) Redis::get('system:bjs:login-state')) {
+            return back()->with('error', 'Cannot delete BJS order because login state is false');
+        }
+
         $order->delete();
         $this->orderService->deleteOrderRedisKeys($order->id);
         $this->orderService->updateCache();
+        if ($order->source === 'bjs') {
+            $cli = new BJSService(new BJSClient);
+            $cli->auth();
+            $cli->bjs->cancelOrder($order->bjs_id);
+        }
 
         return back()->with('success', 'Order deleted successfully');
     }

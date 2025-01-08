@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Device;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -22,8 +23,29 @@ class DeviceController extends Controller
             ->orderBy('last_activity', 'desc')
             ->get();
 
+        // Get all devices and count their states
+        $sixHoursAgo = Carbon::now()->subMinutes(30);
+        $devices = Device::query();
+
+        $totalDevices = $devices->count();
+        $inactiveDevices = $devices->where('last_activity', '<', $sixHoursAgo)->count();
+        $activeDevices = $totalDevices - $inactiveDevices;
+
+        // Count devices by mode
+        $workerModeCount = Device::where('mode', 'worker')->count();
+        $loginModeCount = Device::where('mode', 'login')->count();
+
         return view('pages.devices', [
             'devices' => $devices,
+            // Devices Section
+            'stats' => [
+                'all' => $totalDevices,
+                'active' => $activeDevices,
+                'dead' => $inactiveDevices,
+                'worker' => $workerModeCount,
+                'login' => $loginModeCount,
+            ],
+
         ]);
     }
 

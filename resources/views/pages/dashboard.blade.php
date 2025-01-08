@@ -107,60 +107,6 @@
             </div>
         </div>
 
-        {{-- Devices sections --}}
-        <div class="row mt-3">
-            <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-                <div class="card">
-                    <div class="card-body p-3">
-                        <div class="row">
-                            <div class="col-8">
-                                <div class="numbers">
-                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Devices</p>
-                                    <h5 class="font-weight-bolder">
-                                        <span class="text-success">{{ $devices['active'] }}</span> / <span
-                                            class="text-danger">{{ $devices['dead'] }}</span>
-                                    </h5>
-                                    <p class="mb-0">
-                                        <span class="text-success text-sm font-weight-bolder">{{ $devices['all'] }}</span>
-                                        Total Devices
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <div class="icon icon-shape bg-gradient-primary shadow-primary text-center rounded-circle">
-                                    <i class="ni ni-money-coins text-lg opacity-10" aria-hidden="true"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-                <div class="card">
-                    <div class="card-body p-3">
-                        <div class="row">
-                            <div class="col-8">
-                                <div class="numbers">
-                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Worker / Login</p>
-                                    <h5 class="font-weight-bolder">
-                                        {{ $devices['worker'] }} / {{ $devices['login'] }}
-                                    </h5>
-                                    <p class="mb-0">
-                                        <span class="text-success text-sm font-weight-bolder"><br></span>
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <div class="icon icon-shape bg-gradient-danger shadow-danger text-center rounded-circle">
-                                    <i class="ni ni-world text-lg opacity-10" aria-hidden="true"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="row mt-4">
             <div class="col-lg-7 mb-lg-0 mb-4">
                 <div class="card ">

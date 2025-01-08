@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Device;
 use App\Models\Worker;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redis;
@@ -37,18 +36,6 @@ class HomeController extends Controller
         $loginStateBjs = Redis::get('system:bjs:login-state') ? 'True' : 'False';
         $workerVersion = Redis::get('system:worker:version') ?? 'Not set';
 
-        // Get all devices and count their states
-        $sixHoursAgo = Carbon::now()->subHours(6);
-        $devices = Device::query();
-
-        $totalDevices = $devices->count();
-        $inactiveDevices = $devices->where('last_activity', '<', $sixHoursAgo)->count();
-        $activeDevices = $totalDevices - $inactiveDevices;
-
-        // Count devices by mode
-        $workerModeCount = Device::where('mode', 'worker')->count();
-        $loginModeCount = Device::where('mode', 'login')->count();
-
         return view('pages.dashboard', [
             'workerCounter' => $workerCounters,
             'activeCounter' => $activeWorkerCounter,
@@ -56,15 +43,6 @@ class HomeController extends Controller
             'newWorkers' => $newWorkers,
             'loginStateBjs' => $loginStateBjs,
             'workerVersion' => $workerVersion,
-
-            // Devices Section
-            'devices' => [
-                'all' => $totalDevices,
-                'active' => $activeDevices,
-                'dead' => $inactiveDevices,
-                'worker' => $workerModeCount,
-                'login' => $loginModeCount,
-            ],
 
         ]);
     }

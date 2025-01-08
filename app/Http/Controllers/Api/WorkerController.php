@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 
 class WorkerController extends Controller
 {
@@ -26,10 +27,20 @@ class WorkerController extends Controller
             ->whereDate('created_at', Carbon::today())
             ->count();
 
+        $activeMaxFollow = Worker::query()
+            ->where('status', 'active')
+            ->where('is_max_following_error', true)
+            ->count();
+
         return view('pages.workers', [
             'total' => $workerCounters,
             'statusCounts' => $statusCounts,
             'newWorkers' => $newWorkers,
+            'activeMaxFollow' => $activeMaxFollow,
+            'locks' => [
+                'follow' => count(Redis::keys('worker:*:lock-follow')) ?? 0,
+                'like' => count(Redis::keys('worker:*:lock-like')) ?? 0,
+            ],
         ]);
     }
 

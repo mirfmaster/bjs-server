@@ -189,6 +189,11 @@ class OrderController extends Controller
             'pk' => $media['pk'],
             'owner_username' => $media['owner']['username'],
             'owner_pk_id' => $media['owner']['pk_id'],
+            'owner_id' => $media['owner']['id'],
+            'owner_is_private' => $media['owner']['is_private'],
+            'like_and_view_counts_disabled' => $media['like_and_view_counts_disabled'],
+            'comment_count' => $media['comment_count'],
+            'like_count' => $media['like_count'],
         ];
     }
 
@@ -258,6 +263,73 @@ class OrderController extends Controller
         }
 
         return back()->with('success', 'Order deleted successfully');
+    }
+
+    public function refill(Order $prevOrder)
+    {
+        $previousTarget = $prevOrder->requested + $prevOrder->start_count;
+
+        $refill = new Order;
+        $refill->source = 'refill';
+        $refill->status = 'processing';
+        $refill->status_bjs = 'processing';
+        $refill->target = $prevOrder->target;
+        $refill->kind = $prevOrder->kind;
+        $refill->username = $prevOrder->username;
+        $refill->media_id = $prevOrder->media_id;
+        $refill->priority = 2;
+
+        $bjsService = new BJSService(new BJSClient);
+        $identifier = $bjsService->extractIdentifier($prevOrder->target);
+
+        if ($prevOrder->kind == 'follow') {
+            try {
+                $data = $this->getUserData($identifier);
+                $current = $data['follower_count'];
+
+                if ($current >= $previousTarget) {
+                    return back()
+                        ->with('error', "Refill invalid: C still exceeding PT | PT: $previousTarget C: $current");
+                }
+
+                $refill->start_count = $current;
+                $refill->requested = $current - $previousTarget;
+                $refill->marginRequest = $current - $previousTarget;
+            } catch (\Exception $e) {
+                return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
+            }
+        } elseif ($prevOrder->kind == 'like') {
+            try {
+                $data = $this->getDataMedia($identifier);
+                $current = $data['like_count'];
+
+                if ($current >= $previousTarget) {
+                    return back()
+                        ->with('error', "Refill invalid: C still exceeding PT | PT: $previousTarget C: $current");
+                }
+
+                $refill->start_count = $current;
+                $refill->requested = $current - $previousTarget;
+                $refill->marginRequest = $current - $previousTarget;
+            } catch (\Exception $e) {
+                return back()->with('error', 'Failed to fetch media data: '.$e->getMessage());
+            }
+        }
+
+        $refill->save();
+
+        // Create Redis keys
+        Redis::set("order:{$prevOrder->id}:status", 'processing');
+        Redis::set("order:{$prevOrder->id}:processing", 0);
+        Redis::set("order:{$prevOrder->id}:processed", 0);
+        Redis::set("order:{$prevOrder->id}:failed", 0);
+        Redis::set("order:{$prevOrder->id}:duplicate_interaction", 0);
+        Redis::set("order:{$prevOrder->id}:requested", $refill->requested);
+
+        // Update order cache
+        $this->orderService->updateCache();
+
+        return back()->with('success', 'Order is back to current process');
     }
 
     public function getInfo(Request $request): JsonResponse

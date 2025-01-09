@@ -55,6 +55,7 @@ Route::group(['middleware' => 'auth'], function () {
         ->name('orders.decrement-priority');
     Route::delete('/orders/{order}', [OrderController::class, 'destroy'])
         ->name('orders.destroy');
+    Route::post('/orders/{order}/refill', [OrderController::class, 'refill'])->name('orders.refill');
 
     Route::get('/devices', [DeviceController::class, 'index'])->name('devices');
     Route::post('/devices/{device}/mode', [DeviceController::class, 'updateMode'])->name('devices.mode');

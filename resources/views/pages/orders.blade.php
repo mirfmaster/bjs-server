@@ -404,7 +404,7 @@
                                         Time</th>
                                     <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Elapsed
                                         Time</th>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Created
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Action
                                     </th>
                                 </tr>
                             </thead>
@@ -494,10 +494,18 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="d-flex px-2 py-1">
-                                                <span class="text-secondary text-xs font-weight-bold">
-                                                    {{ $order->created_at->format('Y-m-d H:i') }}
-                                                </span>
+                                            <div class="d-flex px-2 py-1 gap-2">
+                                                @if ($order->status == 'completed')
+                                                    <form action="{{ route('orders.refill', $order->id) }}"
+                                                        method="POST" class="d-inline"
+                                                        onsubmit="return confirm('Are you sure you want to refill this order?');">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                            title="Refill Order">
+                                                            <i class="ni ni-synchronize text-black"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>

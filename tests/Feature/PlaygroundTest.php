@@ -15,9 +15,10 @@ class PlaygroundTest extends TestCase
     public function test_ig_get_info_user(): void
     {
 
-        $cli = new UtilClient();
+        $cli = new UtilClient;
         // $info = $cli->__IGGetInfo('justinbieber');
-        $info = $cli->__IGGetInfo('muhamadiqbal.idn');
+        // $info = $cli->__IGGetInfo('muhamadiqbal.idn');
+        $info = $cli->__IGGetInfo('ihdc_official');
         // __AUTO_GENERATED_PRINT_VAR_START__
         dump('Variable: PlaygroundTest#test_IG_get_info $info: "\n"', $info); // __AUTO_GENERATED_PRINT_VAR_END__
         $this->assertTrue(true);
@@ -30,7 +31,7 @@ class PlaygroundTest extends TestCase
     public function test_ig_get_info_media(): void
     {
         // https://www.instagram.com/p/DEFz5wWS6B6/?img_index=1
-        $cli = new UtilClient();
+        $cli = new UtilClient;
         $info = $cli->__IGGetInfoMedia('DEFz5wWS6B6');
         // __AUTO_GENERATED_PRINT_VAR_START__
         dump('Variable: PlaygroundTest#test_IG_get_info $info: "\n"', $info); // __AUTO_GENERATED_PRINT_VAR_END__
@@ -45,11 +46,11 @@ class PlaygroundTest extends TestCase
     {
         // https://www.instagram.com/p/DEFz5wWS6B6/?img_index=1
         $shortcode = 'DEFz5wWS6B6';
-        $ig = new InstagramID();
+        $ig = new InstagramID;
         $mediaID = $ig->fromCode($shortcode);
 
         $mediaID = '3524457040519166164';
-        $cli = new UtilClient();
+        $cli = new UtilClient;
         $info = $cli->__IGGetMediaInfo($mediaID);
         // __AUTO_GENERATED_PRINT_VAR_START__
         dump('Variable: PlaygroundTest#test_IG_get_info $info: "\n"', $info); // __AUTO_GENERATED_PRINT_VAR_END__
@@ -65,7 +66,7 @@ class PlaygroundTest extends TestCase
         // https://www.instagram.com/p/DEFz5wWS6B6/?img_index=1
         $shortcode = 'DEFz5wWS6B6';
 
-        $cli = new UtilClient();
+        $cli = new UtilClient;
         $info = $cli->BJSGetMediaData($shortcode);
         // __AUTO_GENERATED_PRINT_VAR_START__
         dump('Variable: PlaygroundTest#test_IG_get_info $info: "\n"', $info); // __AUTO_GENERATED_PRINT_VAR_END__

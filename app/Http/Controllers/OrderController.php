@@ -265,24 +265,24 @@ class OrderController extends Controller
         return back()->with('success', 'Order deleted successfully');
     }
 
-    public function refill(Order $prevOrder)
+    public function refill(Order $order)
     {
-        $previousTarget = $prevOrder->requested + $prevOrder->start_count;
+        $previousTarget = $order->requested + $order->start_count;
 
         $refill = new Order;
         $refill->source = 'refill';
         $refill->status = 'processing';
         $refill->status_bjs = 'processing';
-        $refill->target = $prevOrder->target;
-        $refill->kind = $prevOrder->kind;
-        $refill->username = $prevOrder->username;
-        $refill->media_id = $prevOrder->media_id;
+        $refill->target = $order->target;
+        $refill->kind = $order->kind;
+        $refill->username = $order->username;
+        $refill->media_id = $order->media_id;
         $refill->priority = 2;
 
         $bjsService = new BJSService(new BJSClient);
-        $identifier = $bjsService->extractIdentifier($prevOrder->target);
+        $identifier = $bjsService->extractIdentifier($order->target);
 
-        if ($prevOrder->kind == 'follow') {
+        if ($order->kind == 'follow') {
             try {
                 $data = $this->getUserData($identifier);
                 $current = $data['follower_count'];
@@ -298,7 +298,7 @@ class OrderController extends Controller
             } catch (\Exception $e) {
                 return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
             }
-        } elseif ($prevOrder->kind == 'like') {
+        } elseif ($order->kind == 'like') {
             try {
                 $data = $this->getDataMedia($identifier);
                 $current = $data['like_count'];
@@ -319,12 +319,12 @@ class OrderController extends Controller
         $refill->save();
 
         // Create Redis keys
-        Redis::set("order:{$prevOrder->id}:status", 'processing');
-        Redis::set("order:{$prevOrder->id}:processing", 0);
-        Redis::set("order:{$prevOrder->id}:processed", 0);
-        Redis::set("order:{$prevOrder->id}:failed", 0);
-        Redis::set("order:{$prevOrder->id}:duplicate_interaction", 0);
-        Redis::set("order:{$prevOrder->id}:requested", $refill->requested);
+        Redis::set("order:{$refill->id}:status", 'processing');
+        Redis::set("order:{$refill->id}:processing", 0);
+        Redis::set("order:{$refill->id}:processed", 0);
+        Redis::set("order:{$refill->id}:failed", 0);
+        Redis::set("order:{$refill->id}:duplicate_interaction", 0);
+        Redis::set("order:{$refill->id}:requested", $refill->requested);
 
         // Update order cache
         $this->orderService->updateCache();

@@ -62,6 +62,7 @@ Route::group(['middleware' => 'auth'], function () {
 
     Route::get('/api-docs', [PageController::class, 'apiDocs'])->name('api-docs');
     Route::post('/system/toggle-bjs-login', [SystemController::class, 'toggleBJSLoginState'])->name('system.toggle-bjs-login');
+    Route::post('/system/toggle-global-work', [SystemController::class, 'toggleGlobalWork'])->name('system.toggle-global-work');
 
     Route::get('/{page}', [PageController::class, 'index'])->name('page');
     Route::post('logout', [LoginController::class, 'logout'])->name('logout');

@@ -14,4 +14,13 @@ class SystemController extends Controller
 
         return redirect()->back();
     }
+
+    public function toggleGlobalWork()
+    {
+        $currentState = (bool) Redis::get('system:bjs:global-work');
+        $newState = ! $currentState;
+        Redis::set('system:bjs:global-work', $newState);
+
+        return redirect()->back();
+    }
 }

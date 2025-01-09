@@ -502,7 +502,7 @@
                                                         @csrf
                                                         <button type="submit" class="btn btn-sm btn-outline-warning"
                                                             title="Refill Order">
-                                                            <i class="ni ni-synchronize text-black"></i>
+                                                            <i class="ni ni-curved-next text-black"></i>
                                                         </button>
                                                     </form>
                                                 @endif

@@ -28,7 +28,7 @@ class HomeController extends Controller
         $loginRequiredCounter = Worker::query()->where('status', 'relogin')->count();
 
         $loginStateBjs = Redis::get('system:bjs:login-state') ? 'True' : 'False';
-        $globalWorkState = Redis::get('system:bjs:global-work') ? 'True' : 'False';
+        $globalWorkState = Redis::get('system:global-work') ? 'True' : 'False';
 
         return view('pages.dashboard', [
             'activeCounter' => $activeWorkerCounter,

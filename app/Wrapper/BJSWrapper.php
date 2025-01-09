@@ -153,6 +153,7 @@ class BJSWrapper
                     }
 
                     $info = $this->util->__IGGetInfo($username);
+                    Log::debug('ingfonya', ['info' => $info]);
 
                     if (! $info->found) {
                         Log::info('Userinfo is not found cancelling');
@@ -175,8 +176,8 @@ class BJSWrapper
                         continue;
                     }
 
-                    Log::info('Succesfully fetching info, setting start count and changing to inprogress');
                     $start = $info->follower_count;
+                    Log::info('Succesfully fetching info, setting start count and changing to inprogress', ['start_count' => $start]);
                     $this->bjsCli->setStartCount($order->id, $start);
                     $this->bjsCli->changeStatus($order->id, 'inprogress');
 
@@ -340,8 +341,8 @@ class BJSWrapper
         }
 
         foreach ($orders as $order) {
-            if ($order->source == 'direct') {
-                Log::info("Skipping direct order: $order->id ");
+            if ($order->source != 'bjs') {
+                Log::info("Skipping order: $order->id source: $order->source");
 
                 continue;
             }
@@ -372,7 +373,7 @@ class BJSWrapper
         }
 
         foreach ($orders as $order) {
-            if ($order->source != 'direct') {
+            if (! in_array($order->source, ['direct', 'refill'])) {
                 Log::info("Skipping order: $order->id source: $order->source");
 
                 continue;

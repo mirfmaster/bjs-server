@@ -389,7 +389,7 @@ class BJSWrapper
 
             Log::info('Processing direct order', $ctx);
             $redisStatus = $redisData['status'];
-            if ($redisStatus != 'inprogress') {
+            if (in_array($redisStatus, ['inprogress', 'processing'])) {
                 Log::info("Skipping order due to status: $redisStatus");
 
                 continue;

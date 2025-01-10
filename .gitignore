@@ -20,4 +20,5 @@ yarn-error.log
 
 /temp/*
 !/temp/copy_files
+!/temp/description.md
 

@@ -133,7 +133,7 @@ class OrderController extends Controller
                 $data = $this->getUserData($identifier);
                 $order->username = $data['username'];
             } catch (\Exception $e) {
-                return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
+                return back()->with('error', 'Failed to fetch user data: ' . $e->getMessage());
             }
         } elseif ($type == 'like') {
             try {
@@ -141,7 +141,7 @@ class OrderController extends Controller
                 $order->username = $data['owner_username'];
                 $order->media_id = $data['pk'];
             } catch (\Exception $e) {
-                return back()->with('error', 'Failed to fetch media data: '.$e->getMessage());
+                return back()->with('error', 'Failed to fetch media data: ' . $e->getMessage());
             }
         }
 
@@ -268,68 +268,52 @@ class OrderController extends Controller
     public function refill(Order $order)
     {
         $previousTarget = $order->requested + $order->start_count;
-
-        $refill = new Order;
-        $refill->source = 'refill';
-        $refill->status = 'processing';
-        $refill->status_bjs = 'processing';
-        $refill->target = $order->target;
-        $refill->kind = $order->kind;
-        $refill->username = $order->username;
-        $refill->media_id = $order->media_id;
-        $refill->priority = 2;
-
         $bjsService = new BJSService(new BJSClient);
         $identifier = $bjsService->extractIdentifier($order->target);
 
-        if ($order->kind == 'follow') {
-            try {
-                $data = $this->getUserData($identifier);
-                $current = $data['follower_count'];
+        try {
+            $currentData = $this->getCurrentData($order->kind, $identifier);
+            $current = $currentData['count'];
 
-                if ($current >= $previousTarget) {
-                    return back()
-                        ->with('error', "Refill invalid: C still exceeding PT | PT: $previousTarget C: $current");
-                }
-
-                $refill->start_count = $current;
-                $refill->requested = $current - $previousTarget;
-                $refill->marginRequest = $current - $previousTarget;
-            } catch (\Exception $e) {
-                return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
+            if ($current >= $previousTarget) {
+                return back()->with(
+                    'error',
+                    "Refill invalid: C still exceeding PT | PT: $previousTarget C: $current"
+                );
             }
-        } elseif ($order->kind == 'like') {
-            try {
-                $data = $this->getDataMedia($identifier);
-                $current = $data['like_count'];
 
-                if ($current >= $previousTarget) {
-                    return back()
-                        ->with('error', "Refill invalid: C still exceeding PT | PT: $previousTarget C: $current");
-                }
+            $requestedAmount = $previousTarget - $current;
 
-                $refill->start_count = $current;
-                $refill->requested = $current - $previousTarget;
-                $refill->marginRequest = $current - $previousTarget;
-            } catch (\Exception $e) {
-                return back()->with('error', 'Failed to fetch media data: '.$e->getMessage());
-            }
+            $refillData = [
+                'source' => 'refill',
+                'status' => 'processing',
+                'status_bjs' => 'processing',
+                'target' => $order->target,
+                'kind' => $order->kind,
+                'username' => $order->username,
+                'media_id' => $order->media_id,
+                'priority' => 2,
+                'start_count' => $current,
+                'requested' => $requestedAmount,
+                'margin_request' => $requestedAmount
+            ];
+
+            $this->orderService->createAndUpdateCache($refillData);
+            return back()->with('success', 'Order is back to current process with status refill');
+        } catch (\Exception $e) {
+            return back()->with('error', "Failed to fetch {$order->kind} data: " . $e->getMessage());
+        }
+    }
+
+    private function getCurrentData(string $type, string $identifier): array
+    {
+        if ($type === 'follow') {
+            $data = $this->getUserData($identifier);
+            return ['count' => $data['follower_count']];
         }
 
-        $refill->save();
-
-        // Create Redis keys
-        Redis::set("order:{$refill->id}:status", 'processing');
-        Redis::set("order:{$refill->id}:processing", 0);
-        Redis::set("order:{$refill->id}:processed", 0);
-        Redis::set("order:{$refill->id}:failed", 0);
-        Redis::set("order:{$refill->id}:duplicate_interaction", 0);
-        Redis::set("order:{$refill->id}:requested", $refill->requested);
-
-        // Update order cache
-        $this->orderService->updateCache();
-
-        return back()->with('success', 'Order is back to current process');
+        $data = $this->getDataMedia($identifier);
+        return ['count' => $data['like_count']];
     }
 
     public function getInfo(Request $request): JsonResponse

@@ -387,13 +387,13 @@ class BJSWrapper
 
             ]);
 
+            Log::info('Processing direct order', $ctx);
             $redisStatus = $redisData['status'];
-            if ($order->status != 'processing' && $redisStatus == $order->status) {
+            if ($redisStatus != 'inprogress') {
                 Log::info("Skipping order due to status: $redisStatus");
 
                 continue;
             }
-            Log::info('Processing direct order', $ctx);
 
             $order->processed = $redisData['processed'];
             $order->status = $redisStatus;
@@ -406,9 +406,8 @@ class BJSWrapper
             $order->end_at = now();
 
             Log::info('Updating data', [
+                'redis_data' => $redisData,
                 'update_model' => $order->save(),
-                'redis_status' => $redisStatus,
-                'processing' => $redisData['processing'],
                 'processed' => $order->processed,
                 'status' => $order->status,
             ]);

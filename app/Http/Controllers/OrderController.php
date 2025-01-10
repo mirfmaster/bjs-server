@@ -286,8 +286,8 @@ class OrderController extends Controller
 
             $refillData = [
                 'source' => 'refill',
-                'status' => 'processing',
-                'status_bjs' => 'processing',
+                'status' => 'inprogress',
+                'status_bjs' => 'inprogress',
                 'target' => $order->target,
                 'kind' => $order->kind,
                 'username' => $order->username,

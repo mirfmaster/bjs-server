@@ -253,14 +253,17 @@ class OrderController extends Controller
             return back()->with('error', 'Cannot delete BJS order because login state is false');
         }
 
+        if ($order->source === 'bjs') {
+            $cli = new BJSService(new BJSClient);
+            $resp = $cli->auth();
+            if (!$resp) {
+                return back()->with('success', 'BJS Cli auth failed, please retry');
+            }
+            $cli->bjs->cancelOrder($order->bjs_id);
+        }
         $order->delete();
         $this->orderService->deleteOrderRedisKeys($order->id);
         $this->orderService->updateCache();
-        if ($order->source === 'bjs') {
-            $cli = new BJSService(new BJSClient);
-            $cli->auth();
-            $cli->bjs->cancelOrder($order->bjs_id);
-        }
 
         return back()->with('success', 'Order deleted successfully');
     }

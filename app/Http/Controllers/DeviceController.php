@@ -32,8 +32,8 @@ class DeviceController extends Controller
         $activeDevices = $totalDevices - $inactiveDevices;
 
         // Count devices by mode
-        $workerModeCount = Device::where('mode', 'worker')->count();
-        $loginModeCount = Device::where('mode', 'login')->count();
+        $workerModeCount = Device::where('mode', 'worker')->where('last_activity', '<', $sixHoursAgo)->count();
+        $loginModeCount = Device::where('mode', 'login')->where('last_activity', '<', $sixHoursAgo)->count();
 
         $workerVersion = Redis::get('system:worker:version') ?? 'Not set';
 

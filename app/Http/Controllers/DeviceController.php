@@ -12,6 +12,7 @@ class DeviceController extends Controller
 {
     public function index()
     {
+        $limitInactive = Carbon::now()->subMinutes(30);
         $devices = Device::with('statistics')
             ->addSelect([
                 '*',
@@ -22,18 +23,20 @@ class DeviceController extends Controller
             ])
             ->orderBy('last_activity', 'desc')
             ->get();
+        // Count devices by mode
+        $workerModeCount = Device::where('mode', 'worker')
+            ->where('last_activity', '>=', $limitInactive)
+            ->count();
+        $loginModeCount = Device::where('mode', 'login')
+            ->where('last_activity', '>=', $limitInactive)
+            ->count();
 
         // Get all devices and count their states
-        $sixHoursAgo = Carbon::now()->subMinutes(30);
         $deviceQuery = Device::query();
 
         $totalDevices = $deviceQuery->count();
-        $inactiveDevices = $deviceQuery->where('last_activity', '<', $sixHoursAgo)->count();
+        $inactiveDevices = $deviceQuery->where('last_activity', '<', $limitInactive)->count();
         $activeDevices = $totalDevices - $inactiveDevices;
-
-        // Count devices by mode
-        $workerModeCount = Device::where('mode', 'worker')->where('last_activity', '<', $sixHoursAgo)->count();
-        $loginModeCount = Device::where('mode', 'login')->where('last_activity', '<', $sixHoursAgo)->count();
 
         $workerVersion = Redis::get('system:worker:version') ?? 'Not set';
 

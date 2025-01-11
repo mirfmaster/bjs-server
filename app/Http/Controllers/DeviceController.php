@@ -12,43 +12,42 @@ class DeviceController extends Controller
 {
     public function index()
     {
-        $limitInactive = Carbon::now()->subMinutes(30);
+        $activeThreshold = Carbon::now()->subMinutes(30);
+
         $devices = Device::with('statistics')
             ->addSelect([
                 '*',
-                DB::raw('CASE
-                WHEN last_activity >= NOW() - INTERVAL \'30 minutes\' THEN \'active\'
-                ELSE \'inactive\'
-            END as current_status'),
+                DB::raw("CASE
+                WHEN last_activity >= NOW() - INTERVAL '30 minutes' THEN 'active'
+                ELSE 'inactive'
+            END as current_status"),
             ])
             ->orderBy('last_activity', 'desc')
             ->get();
-        // Count devices by mode
-        $workerModeCount = Device::where('mode', 'worker')
-            ->where('last_activity', '>=', $limitInactive)
-            ->count();
-        $loginModeCount = Device::where('mode', 'login')
-            ->where('last_activity', '>=', $limitInactive)
+
+        $activeWorkers = Device::where('mode', 'worker')
+            ->where('last_activity', '>=', $activeThreshold)
             ->count();
 
-        // Get all devices and count their states
-        $deviceQuery = Device::query();
+        $activeLogins = Device::where('mode', 'login')
+            ->where('last_activity', '>=', $activeThreshold)
+            ->count();
 
-        $totalDevices = $deviceQuery->count();
-        $inactiveDevices = $deviceQuery->where('last_activity', '<', $limitInactive)->count();
-        $activeDevices = $totalDevices - $inactiveDevices;
+        // Calculate total statistics
+        $totalDevices = Device::count();
+        $activeDevices = $activeWorkers + $activeLogins;
+        $inactiveDevices = $totalDevices - $activeDevices;
 
         $workerVersion = Redis::get('system:worker:version') ?? 'Not set';
 
         return view('pages.devices', [
             'devices' => $devices,
-            // Devices Section
             'stats' => [
                 'all' => $totalDevices,
                 'active' => $activeDevices,
                 'dead' => $inactiveDevices,
-                'worker' => $workerModeCount,
-                'login' => $loginModeCount,
+                'worker' => $activeWorkers,
+                'login' => $activeLogins,
             ],
             'workerVersion' => $workerVersion,
         ]);

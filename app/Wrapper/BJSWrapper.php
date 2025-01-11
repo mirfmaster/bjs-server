@@ -84,6 +84,8 @@ class BJSWrapper
                         'start_count' => $info->like_count,
                     ]);
 
+                    $this->bjsService->auth();
+                    sleep(1);
                     $this->bjsCli->setStartCount($order->id, $info->like_count);
                     sleep(1);
                     $this->bjsCli->changeStatus($order->id, 'inprogress');
@@ -178,7 +180,10 @@ class BJSWrapper
 
                     $start = $info->follower_count;
                     Log::info('Succesfully fetching info, setting start count and changing to inprogress', ['start_count' => $start]);
+                    $this->bjsService->auth();
+                    sleep(1);
                     $this->bjsCli->setStartCount($order->id, $start);
+                    sleep(1);
                     $this->bjsCli->changeStatus($order->id, 'inprogress');
 
                     $requested = $order->count;

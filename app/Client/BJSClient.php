@@ -35,7 +35,7 @@ class BJSClient
         $this->baseUrl = config('app.bjs_api');
 
         // Initialize Redis-based cookie jar
-        $this->cookieJar = new RedisCookieJar;
+        $this->cookieJar = new RedisCookieJar();
 
         // Load saved auth state
         $this->loadAuthState();
@@ -92,7 +92,7 @@ class BJSClient
 
         // Add bearer token if available
         if ($this->bearerToken) {
-            $defaultHeaders['Authorization'] = 'Bearer '.$this->bearerToken;
+            $defaultHeaders['Authorization'] = 'Bearer ' . $this->bearerToken;
         }
 
         $this->cli = new Client([
@@ -297,6 +297,26 @@ class BJSClient
             return $response->getStatusCode() === 200;
         } catch (\Throwable $th) {
             $this->logError($th);
+
+            return false;
+        }
+    }
+
+    public function addCancelReason(int $id, string $comment): bool
+    {
+        $ctx = [
+            'form_params' => [
+                'id' => $id,
+                'comment' => $comment,
+            ],
+        ];
+
+        try {
+            $response = $this->cliXML->post("/admin/api/orders/add-cancel-reason/$id", $ctx);
+
+            return $response->getStatusCode() === 200;
+        } catch (\Throwable $th) {
+            $this->logError($th, $ctx);
 
             return false;
         }

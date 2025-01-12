@@ -26,6 +26,7 @@ class BJSWrapper
         $this->bjsCli = $bjsService->bjs;
     }
 
+    // NOTE: its better to sync orders from BJS to server, instead server to BJS
     public function fetchLikeOrder($watchlists)
     {
         Log::info('======================');
@@ -39,6 +40,8 @@ class BJSWrapper
 
             Log::info('Processing orders: ' . count($orders), $context);
             foreach ($orders as $order) {
+                // Random delay between 100ms (100,000 microseconds) and 1s (1,000,000 microseconds)
+                usleep(mt_rand(100000, 1000000));
                 $ctx = $context;
                 $ctx['orderData'] = [
                     'id' => $order->id,
@@ -131,6 +134,7 @@ class BJSWrapper
 
             Log::info('Processing orders: ' . count($orders), $context);
             foreach ($orders as $order) {
+                usleep(mt_rand(100_000, 1_000_000));
                 $ctx = $context;
                 $ctx['orderData'] = [
                     'id' => $order->id,

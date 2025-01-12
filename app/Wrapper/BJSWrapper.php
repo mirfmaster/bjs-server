@@ -4,6 +4,7 @@ namespace App\Wrapper;
 
 use App\Client\BJSClient;
 use App\Client\UtilClient;
+use App\Consts\OrderConst;
 use App\Models\Order;
 use App\Services\BJSService;
 use App\Services\OrderService;
@@ -821,8 +822,8 @@ class BJSWrapper
             'process' => 'service-availabilty',
         ];
         $services = [
-            'follow' => [164],
-            'like' => [167],
+            'follow' => OrderConst::FOLLOW_SERVICES,
+            'like' => OrderConst::LIKE_SERVICES,
         ];
         Log::info('Handling service availability');
 
@@ -839,9 +840,10 @@ class BJSWrapper
         foreach ($stats as $stat) {
             Log::info("Processing order type: $stat->kind", array_merge($baseContext, ['stat' => $stat]));
 
-            if ($stat->total_requested >= 999999) {
+            if ($stat->total_requested >= OrderConst::MAX_PROCESS_FOLLOW_PER_DAY) {
                 $codes = $services[$stat->kind];
                 foreach ($codes as $code) {
+                    $this->bjsService->auth();
                     Log::info("Disabling service $code");
                     $req = $this->bjsCli->changeStatusServices($code, false);
                     Redis::set("system:disabled-service:$code", true);

@@ -7,6 +7,7 @@ use App\Client\UtilClient;
 use App\Models\Order;
 use App\Services\BJSService;
 use App\Services\OrderService;
+use App\Services\OrderServiceV2;
 use App\Traits\LoggerTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,12 +19,15 @@ class BJSWrapper
 
     private BJSClient $bjsCli;
 
+    public OrderServiceV2 $orderV2;
+
     public function __construct(
         public BJSService $bjsService,
         public OrderService $order,
         public UtilClient $util,
     ) {
         $this->bjsCli = $bjsService->bjs;
+        $this->orderV2 = new OrderServiceV2(new Order());
     }
 
     // NOTE: its better to sync orders from BJS to server, instead server to BJS
@@ -63,6 +67,7 @@ class BJSWrapper
                         Log::warning('Shortcode is not valid, skipping...', $ctx);
 
                         $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, 'Link is not valid');
 
                         continue;
                     }
@@ -78,6 +83,16 @@ class BJSWrapper
                         ]);
 
                         $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, $info->owner_is_private ? 'Account is private mode' : 'Media is not found');
+
+                        continue;
+                    }
+
+                    // Add daily limit check
+                    if (! $this->orderV2->canProcessLikeOrder($getInfo->media_id)) {
+                        Log::warning('Daily limit reached for media_id: ' . $getInfo->media_id, $ctx);
+                        $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, 'Daily limit reached');
 
                         continue;
                     }
@@ -158,12 +173,22 @@ class BJSWrapper
                         continue;
                     }
 
+                    // Add daily limit check
+                    if (! $this->orderV2->canProcessFollowOrder($username)) {
+                        Log::warning('Daily limit reached for username: ' . $username, $ctx);
+                        $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, 'Daily limit reached');
+
+                        continue;
+                    }
+
                     $info = $this->util->__IGGetInfo($username);
                     Log::debug('ingfonya', ['info' => $info]);
 
                     if (! $info->found) {
                         Log::info('Userinfo is not found cancelling');
                         $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, 'Cannot find user info');
 
                         continue;
                     }
@@ -178,6 +203,7 @@ class BJSWrapper
                     if ($info->is_private) {
                         Log::info('Fetch Follow Orders, ID: ' . $order->id . ' user is private');
                         $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, 'Account is private mode');
 
                         continue;
                     }

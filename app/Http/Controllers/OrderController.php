@@ -18,7 +18,7 @@ class OrderController extends Controller
 
     public function __construct()
     {
-        $this->orderService = new OrderService(new Order);
+        $this->orderService = new OrderService(new Order());
     }
 
     public function index(Request $request)
@@ -115,16 +115,17 @@ class OrderController extends Controller
         $requested = $request->requested;
         $marginRequest = $requested + (ceil($requested * 0.1));
 
-        $order = new Order;
+        $order = new Order();
         $order->source = 'direct';
         $order->status = 'processing';
         $order->status_bjs = 'processing';
         $order->target = $target;
         $order->kind = $type;
         $order->requested = $requested;
+        $order->priority = 3;
         $order->margin_request = $marginRequest;
 
-        $bjsService = new BJSService(new BJSClient);
+        $bjsService = new BJSService(new BJSClient());
         $identifier = $bjsService->extractIdentifier($target);
 
         if ($type == 'follow') {
@@ -254,10 +255,10 @@ class OrderController extends Controller
         }
 
         if ($order->source === 'bjs') {
-            $cli = new BJSService(new BJSClient);
+            $cli = new BJSService(new BJSClient());
             $resp = $cli->auth();
-            if (!$resp) {
-                return back()->with('success', 'BJS Cli auth failed, please retry');
+            if (! $resp) {
+                return back()->with('erro', 'BJS Cli auth failed, please retry');
             }
             $cli->bjs->cancelOrder($order->bjs_id);
         }
@@ -271,7 +272,7 @@ class OrderController extends Controller
     public function refill(Order $order)
     {
         $previousTarget = $order->requested + $order->start_count;
-        $bjsService = new BJSService(new BJSClient);
+        $bjsService = new BJSService(new BJSClient());
         $identifier = $bjsService->extractIdentifier($order->target);
 
         try {
@@ -298,10 +299,11 @@ class OrderController extends Controller
                 'priority' => 2,
                 'start_count' => $current,
                 'requested' => $requestedAmount,
-                'margin_request' => $requestedAmount
+                'margin_request' => $requestedAmount,
             ];
 
             $this->orderService->createAndUpdateCache($refillData);
+
             return back()->with('success', 'Order is back to current process with status refill');
         } catch (\Exception $e) {
             return back()->with('error', "Failed to fetch {$order->kind} data: " . $e->getMessage());
@@ -312,10 +314,12 @@ class OrderController extends Controller
     {
         if ($type === 'follow') {
             $data = $this->getUserData($identifier);
+
             return ['count' => $data['follower_count']];
         }
 
         $data = $this->getDataMedia($identifier);
+
         return ['count' => $data['like_count']];
     }
 

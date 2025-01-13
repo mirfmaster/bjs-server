@@ -12,5 +12,5 @@ class OrderConst
 
     public const MAX_PROCESS_FOLLOW_PER_DAY = 100_000;
 
-    public const MAX_LIKE = 1;
+    public const MAX_LIKE = 3;
 }

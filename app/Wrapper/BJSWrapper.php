@@ -137,7 +137,7 @@ class BJSWrapper
         }
     }
 
-    public function fetchFollowOrder($watchlists)
+    public function fetchFollowOrder($watchlists, &$totalFollowOrder)
     {
         Log::info('======================');
         $context = ['process' => 'fetch-follow'];
@@ -163,6 +163,11 @@ class BJSWrapper
                     Log::warning('Order already exist, skipping...', $ctx);
 
                     continue;
+                }
+
+                if ($totalFollowOrder > OrderConst::MAX_PROCESS_FOLLOW_PER_DAY) {
+                    Log::info('Max follow process per day exceeded, skipping getting order');
+                    break;
                 }
 
                 try {
@@ -234,6 +239,7 @@ class BJSWrapper
                         'source' => 'bjs',
                     ];
                     $this->order->createAndUpdateCache($data);
+                    $totalFollowOrder += $requested;
                     Log::info('Order fetch info success, processing next...');
                 } catch (\Throwable $th) {
                     $this->logError($th, $ctx);
@@ -846,7 +852,7 @@ class BJSWrapper
                     $this->bjsService->auth();
                     Log::info("Disabling service $code");
                     $req = $this->bjsCli->changeStatusServices($code, false);
-                    Redis::set("system:disabled-service:$code", true);
+                    Redis::set("system:bjs:disabled-service:$code", true);
                     Log::info('result', array_merge($baseContext, ['result' => $req]));
                 }
             }

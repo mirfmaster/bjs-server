@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -55,12 +56,12 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
     {
         Log::info('Starting job SyncBJSOrders');
 
-        $bjsCli = new BJSClient;
+        $bjsCli = new BJSClient();
 
         $bjsService = new BJSService($bjsCli);
-        $orderService = new OrderService(new Order);
+        $orderService = new OrderService(new Order());
 
-        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient);
+        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient());
 
         $loginStateBjs = Redis::get('system:bjs:login-state');
         if ((bool) $loginStateBjs) {
@@ -72,9 +73,21 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
 
                 return;
             }
+            $stats = Order::query()
+                ->whereDate('created_at', now()->toDateString())
+                ->where('kind', 'follow')
+                ->select([
+                    'kind',
+                    DB::raw('COALESCE(SUM(requested), 0) as total_requested'),
+                    DB::raw('COALESCE(SUM(margin_request), 0) as total_margin_requested'),
+                ])
+                ->groupBy('kind')
+                ->first();
+
+            $currentTotal = $stats->total_requested;
 
             $bjsWrapper->fetchLikeOrder($watchlistLike);
-            $bjsWrapper->fetchFollowOrder($watchlistFollow);
+            $bjsWrapper->fetchFollowOrder($watchlistFollow, $currentTotal);
             $bjsWrapper->processOrders();
             $bjsWrapper->handleServicesAvailability();
         } else {

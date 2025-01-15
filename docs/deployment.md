@@ -16,3 +16,26 @@ sudo usermod -a -G www-data $USER
 
 sudo service nginx restart
 ```
+
+```bash
+# Setting up log rotate in /etc/logrotate.d/bjs-server
+/var/www/html/bjs/bjs-server/storage/logs/*.log {
+    su www-data www-data
+    daily
+    missingok
+    rotate 14
+    maxage 14
+    nocompress
+    notifempty
+    create 0664 www-data www-data
+    sharedscripts
+}
+
+# Test
+# Do a dry run
+sudo logrotate -d /etc/logrotate.d/laravel
+
+# Force rotation (for testing)
+sudo logrotate -f /etc/logrotate.d/laravel
+
+```

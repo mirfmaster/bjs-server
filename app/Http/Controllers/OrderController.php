@@ -262,8 +262,12 @@ class OrderController extends Controller
             }
             $cli->bjs->cancelOrder($order->bjs_id);
         }
-        $order->delete();
-        $this->orderService->deleteOrderRedisKeys($order->id);
+        $order->update([
+            'status' => 'cancel',
+            'status_bjs' => 'cancel',
+        ]);
+        $this->orderService->setOrderID($order->id);
+        $this->orderService->setStatusRedis('cancel');
         $this->orderService->updateCache();
 
         return back()->with('success', 'Order deleted successfully');

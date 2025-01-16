@@ -140,6 +140,13 @@ class BJSWrapper
     public function fetchFollowOrder($watchlists, &$totalFollowOrder)
     {
         Log::info('======================');
+
+        if ($totalFollowOrder > OrderConst::MAX_PROCESS_FOLLOW_PER_DAY) {
+            Log::info('Max follow process per day exceeded, skipping getting follow order');
+
+            return;
+        }
+
         $context = ['process' => 'fetch-follow'];
         Log::info('Fetching order', $context);
         foreach ($watchlists as $id) {

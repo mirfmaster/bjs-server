@@ -86,7 +86,7 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
             $bjsWrapper->fetchLikeOrder($watchlistLike);
             $bjsWrapper->fetchFollowOrder($watchlistFollow, $currentTotal);
             $bjsWrapper->processOrders();
-            $bjsWrapper->handleServicesAvailability();
+            // $bjsWrapper->handleServicesAvailability();
         } else {
             Log::info('Skipping BJS actions because login state is false, only processing direct order');
         }

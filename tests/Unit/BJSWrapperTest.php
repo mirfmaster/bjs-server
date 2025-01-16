@@ -123,7 +123,7 @@ class BJSWrapperTest extends TestCase
      */
     public function test_set_remains(): void
     {
-        // $this->markTestSkipped('Remove this line to run the test.');
+        $this->markTestSkipped('Remove this line to run the test.');
 
         $this->wrapper->bjsService->auth();
         // Execute the actual fetch
@@ -149,7 +149,7 @@ class BJSWrapperTest extends TestCase
      */
     public function test_set_startcount(): void
     {
-        // $this->markTestSkipped('Remove this line to run the test.');
+        $this->markTestSkipped('Remove this line to run the test.');
 
         $this->wrapper->bjsService->auth();
         // Execute the actual fetch
@@ -172,6 +172,25 @@ class BJSWrapperTest extends TestCase
 
     /**
      * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_get_info_order
+     */
+    public function test_get_info_order(): void
+    {
+        $this->markTestSkipped('Remove this line to run the test.');
+
+        $this->wrapper->bjsService->auth();
+        // Execute the actual fetch
+        $this->wrapper->resyncOrders();
+        $test = $this->wrapper->bjsService->bjs->getOrderInfo(4747857);
+        // __AUTO_GENERATED_PRINT_VAR_START__
+        dump('Variable: BJSWrapperTest#test_get_info_order $test: "\n"', $test); // __AUTO_GENERATED_PRINT_VAR_END__
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
+
+    /**
+     * To run this test:
      * php artisan test --filter=BJSWrapperTest::test_fetch_all
      */
     public function test_fetch_all(): void
@@ -186,7 +205,7 @@ class BJSWrapperTest extends TestCase
         // Execute both fetches
         $this->wrapper->fetchLikeOrder($likeWatchlists);
         $this->wrapper->fetchFollowOrder($followWatchlists);
-        $this->wrapper->processCachedOrders();
+        // $this->wrapper->processCachedOrders();
         $this->wrapper->processOrders();
         $this->wrapper->resyncOrders();
 

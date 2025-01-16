@@ -69,10 +69,6 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 14,
             'permission' => 0664,
-            'owner' => [
-                'user' => 'www-data',
-                'group' => 'www-data',
-            ],
         ],
 
         'slack' => [

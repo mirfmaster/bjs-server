@@ -868,4 +868,97 @@ class BJSWrapper
             Log::info('======================' . PHP_EOL . PHP_EOL);
         }
     }
+
+    /**
+     * Synchronizes order statuses between Redis, local database, and BJS service.
+     *
+     * This function processes orders in the following ways:
+     * 1. Checks BJS login state before processing
+     * 2. Filters for BJS-sourced orders only
+     * 3. Verifies and updates start counts if missing
+     * 4. Syncs status changes from BJS to local system
+     */
+    public function syncOrdersBJS(): void
+    {
+        Log::info('======================');
+        $stateLogin = (bool) Redis::get('system:allow-login-bjs');
+        $baseContext = [
+            'process' => 'sync-state',
+            'allow_login_bjs' => $stateLogin,
+        ];
+
+        $orders = $this->order->getOrders();
+        Log::info("Found {$orders->count()} orders to process", $baseContext);
+
+        foreach ($orders as $order) {
+            // Recheck login state for each iteration
+            $stateLogin = (bool) Redis::get('system:allow-login-bjs');
+            $baseContext['allow_login_bjs'] = $stateLogin;
+
+            if (! $stateLogin) {
+                Log::info('State login is false, skipping task');
+                break;
+            }
+
+            if ($order->source !== 'bjs') {
+                Log::info("Skipping order: $order->id source: $order->source");
+
+                continue;
+            }
+
+            // Set up order context and fetch current state
+            $this->order->setOrderID($order->id);
+            $state = $this->order->getOrderRedisKeys();
+            $ctx = array_merge($baseContext, [
+                'order' => $order->only(['id', 'bjs_id', 'status']),
+                'state' => $state,
+            ]);
+
+            // Fetch and validate BJS order data
+            $info = $this->bjsCli->getOrderDetail($order->bjs_id);
+            if (! $info) {
+                Log::warning("Cannot fetch data: $order->bjs_id");
+
+                continue;
+            }
+
+            // Handle missing start count
+            if ($info->start_count === null) {
+                Log::info('Start count is null but already processed, updating ...');
+                $this->bjsCli->setStartCount($order->bjs_id, $order->start_count);
+            }
+
+            // Skip if statuses are already synchronized
+            if (OrderConst::TO_BJS_STATUS[$order->status] === $info->status) {
+                Log::info('Order status in sync, skipping');
+
+                continue;
+            }
+
+            // Process status changes for terminal states (completed, partial, cancel)
+            $terminalStates = [
+                OrderConst::TO_BJS_STATUS['cancel'],
+                OrderConst::TO_BJS_STATUS['partial'],
+                OrderConst::TO_BJS_STATUS['completed'],
+            ];
+
+            if (in_array($info->status, $terminalStates)) {
+                $tokoStatus = OrderConst::FROM_BJS_STATUS[$info->status];
+                Log::info('Order status mismatch syncing', array_merge($ctx, [
+                    'status_transition' => [
+                        'from' => $order->status,
+                        'to' => $tokoStatus,
+                    ],
+                ]));
+
+                $this->order->setStatusRedis($tokoStatus);
+                $order->update([
+                    'status' => $tokoStatus,
+                    'status_bjs' => $tokoStatus
+                ]);
+            }
+
+            Log::info('======================' . PHP_EOL . PHP_EOL);
+        }
+    }
 }

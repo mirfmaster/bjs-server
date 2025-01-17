@@ -387,4 +387,48 @@ class BJSClient
             return collect([]);
         }
     }
+
+    /**
+     * Get order details by ID with optional service ID
+     *
+     * @param  int  $orderId  The order ID to search for
+     * @param  int|null  $serviceId  Optional service ID to filter by
+     */
+    public function getOrderDetails(int $orderId, ?int $serviceId = null): ResponseInterface
+    {
+        $queryParams = [
+            'query' => $orderId,
+            'search_type' => 1,
+        ];
+
+        if ($serviceId !== null) {
+            $queryParams['service'] = $serviceId;
+        }
+
+        return $this->cliXML->get('/admin/api/orders/list', [
+            'query' => $queryParams,
+        ]);
+    }
+
+    /**
+     * Get order details by ID with optional service ID
+     * Returns the first matching order or null if not found
+     *
+     * @param  int  $orderId  The order ID to search for
+     * @param  int|null  $serviceId  Optional service ID to filter by
+     * @return object|null The order details or null if not found/error
+     */
+    public function getOrderDetail(int $orderId, ?int $serviceId = null): ?object
+    {
+        try {
+            $response = $this->getOrderDetails($orderId, $serviceId);
+            $data = json_decode((string) $response->getBody());
+
+            return collect($data->data->orders)->first();
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return null;
+        }
+    }
 }

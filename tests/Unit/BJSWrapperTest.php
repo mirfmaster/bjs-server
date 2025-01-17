@@ -137,6 +137,23 @@ class BJSWrapperTest extends TestCase
 
     /**
      * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_sync_orders_bjs
+     */
+    public function test_sync_orders_bjs(): void
+    {
+        // $this->markTestSkipped('Remove this line to run the test.');
+
+        $this->wrapper->bjsService->auth();
+        // Execute the actual fetch
+        $this->wrapper->syncOrdersBJS();
+        // $info = $this->wrapper->bjsService->bjs->getOrderDetail('4748803');
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
+
+    /**
+     * To run this test:
      * php artisan test --filter=BJSWrapperTest::test_set_remains
      */
     public function test_set_remains(): void

@@ -42,6 +42,7 @@ class BJSWrapper
 
             Log::info('Getting orders with status pending', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
+            $orders = $orders->sortBy('created');
 
             Log::info('Processing orders: ' . count($orders), $context);
             foreach ($orders as $order) {
@@ -154,6 +155,7 @@ class BJSWrapper
 
             Log::info('Getting orders with status pending', $context);
             $orders = $this->bjsService->getOrdersData($id, 0);
+            $orders = $orders->sortBy('created');
 
             Log::info('Processing orders: ' . count($orders), $context);
             foreach ($orders as $order) {

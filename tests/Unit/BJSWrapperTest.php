@@ -19,10 +19,10 @@ class BJSWrapperTest extends TestCase
         parent::setUp();
 
         // Create real instances
-        $bjsClient = new BJSClient;
+        $bjsClient = new BJSClient();
         $bjsService = new BJSService($bjsClient);
-        $orderService = new OrderService(new \App\Models\Order, new Redis);
-        $utilClient = new UtilClient;
+        $orderService = new OrderService(new \App\Models\Order(), new Redis());
+        $utilClient = new UtilClient();
 
         $this->wrapper = new BJSWrapper(
             $bjsService,
@@ -71,19 +71,37 @@ class BJSWrapperTest extends TestCase
 
     /**
      * To run this test:
-     * php artisan test --filter=BJSWrapperTest::test_process_cached_orders
+     * php artisan test --filter=BJSWrapperTest::test_fetch_orders_only
      */
-    public function test_process_cached_orders(): void
+    public function test_fetch_orders_only(): void
     {
         $this->markTestSkipped('Remove this line to run the test.');
 
+        // Real service IDs for follow orders
         $this->wrapper->bjsService->auth();
-        // Execute the actual fetch
-        $this->wrapper->processCachedOrders();
+
+        $orders = $this->wrapper->bjsService->getOrdersData(164, 0);
+        $orders = $orders->sortBy('created');
 
         // Test passes if no exceptions are thrown
         $this->assertTrue(true);
     }
+
+    // /**
+    //  * To run this test:
+    //  * php artisan test --filter=BJSWrapperTest::test_process_cached_orders
+    //  */
+    // public function test_process_cached_orders(): void
+    // {
+    //     $this->markTestSkipped('Remove this line to run the test.');
+    //
+    //     $this->wrapper->bjsService->auth();
+    //     // Execute the actual fetch
+    //     $this->wrapper->processCachedOrders();
+    //
+    //     // Test passes if no exceptions are thrown
+    //     $this->assertTrue(true);
+    // }
 
     /**
      * To run this test:
@@ -186,7 +204,7 @@ class BJSWrapperTest extends TestCase
         // Execute both fetches
         $this->wrapper->fetchLikeOrder($likeWatchlists);
         $this->wrapper->fetchFollowOrder($followWatchlists);
-        $this->wrapper->processCachedOrders();
+        // $this->wrapper->processCachedOrders();
         $this->wrapper->processOrders();
         $this->wrapper->resyncOrders();
 

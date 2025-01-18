@@ -62,8 +62,9 @@ class BJSWrapperTest extends TestCase
         $watchlists = [164];
         $this->wrapper->bjsService->auth();
 
+        $todayOrder = 0;
         // Execute the actual fetch
-        $this->wrapper->fetchFollowOrder($watchlists);
+        $this->wrapper->fetchFollowOrder($watchlists, $todayOrder);
 
         // Test passes if no exceptions are thrown
         $this->assertTrue(true);
@@ -220,7 +221,8 @@ class BJSWrapperTest extends TestCase
 
         // Execute both fetches
         $this->wrapper->fetchLikeOrder($likeWatchlists);
-        $this->wrapper->fetchFollowOrder($followWatchlists);
+        $todayOrder = 0;
+        $this->wrapper->fetchFollowOrder($followWatchlists, $todayOrder);
         // $this->wrapper->processCachedOrders();
         $this->wrapper->processOrders();
         $this->wrapper->resyncOrders();

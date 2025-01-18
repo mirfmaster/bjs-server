@@ -56,7 +56,7 @@ class BJSService
         return false;
     }
 
-    public function getOrdersData(int $serviceId, int $status, int $pageSize = 100): Collection
+    public function getOrdersData(int $serviceId, int $status, int $pageSize = 1000): Collection
     {
         try {
             $request = $this->bjs->getOrdersList($status, $serviceId, $pageSize);

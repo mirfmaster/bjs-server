@@ -27,6 +27,8 @@ class Order extends Model
         'status_bjs',
         'reseller_name',
         'price',
+        'last_checked',
+        'autolike_target',
     ];
 
     protected $casts = [
@@ -39,6 +41,7 @@ class Order extends Model
         'priority' => 'integer',
         'started_at' => 'datetime',
         'end_at' => 'datetime',
+        'last_checked' => 'datetime',
     ];
 
     // Default values
@@ -68,6 +71,6 @@ class Order extends Model
      */
     public function getAnonymizedUrl(): string
     {
-        return 'https://anon.ws/?to='.urlencode($this->getInstagramUrl());
+        return 'https://anon.ws/?to=' . urlencode($this->getInstagramUrl());
     }
 }

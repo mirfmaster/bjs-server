@@ -82,6 +82,15 @@ class OrderController extends Controller
             ->groupBy('kind')
             ->get();
 
+        $leftOrders = Order::query()
+            // ->whereDate('created_at', now()->toDateString())
+            ->whereIn('status', ['inprogress', 'processing'])
+            ->select([
+                DB::raw('COUNT(*) as total_orders'),
+                DB::raw('COALESCE(SUM(requested), 0) as total_requested'),
+            ])
+            ->first();
+
         return view('pages.orders', [
             'processeds' => $processeds,
             'history' => $history,
@@ -97,6 +106,7 @@ class OrderController extends Controller
             // Statistics
             'statistics' => [
                 'order' => $orderStats,
+                'leftOrders' => $leftOrders,
             ],
         ]);
     }

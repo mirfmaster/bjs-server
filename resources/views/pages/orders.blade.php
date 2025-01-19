@@ -182,7 +182,9 @@
                 <div class="card">
                     <div class="card-header pb-0 p-3">
                         <div class="d-flex justify-content-between">
-                            <h6 class="mb-2">Currently working</h6>
+                            <h6 class="mb-2">Currently working (Left:
+                                {{ number_format($statistics['leftOrders']->total_orders) }}
+                                ({{ number_format($statistics['leftOrders']->total_requested) }}) )</h6>
                         </div>
                     </div>
                     <div class="table-responsive">

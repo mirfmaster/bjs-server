@@ -58,6 +58,7 @@ class BJSService
 
     public function getOrdersData(int $serviceId, int $status, int $pageSize = 1000): Collection
     {
+        throw_if($pageSize > 1000, new \Exception('Max pagesize is 1000'));
         try {
             $request = $this->bjs->getOrdersList($status, $serviceId, $pageSize);
             $resp = json_decode($request->getBody(), false);

@@ -259,6 +259,130 @@ class BJSWrapper
         }
     }
 
+    // NOTE:
+    // 1. Validate
+    //   - if order exist
+    //   - user is not private
+    //   - user is hide like / count
+    // 2. Fetch info user
+    public function fetchAutomation($watchlists)
+    {
+        Log::info('======================');
+        $context = ['process' => 'fetch-automation'];
+        Log::info('Fetching order', $context);
+        foreach ($watchlists as $id) {
+            $context['processID'] = $id;
+
+            Log::info('Getting orders with status pending', $context);
+            $orders = $this->bjsService->getOrdersData($id, 0);
+            $orders = $orders->sortBy('created');
+
+            Log::info('Processing orders: ' . count($orders), $context);
+            foreach ($orders as $order) {
+                // Random delay between 100ms (100,000 microseconds) and 1s (1,000,000 microseconds)
+                usleep(mt_rand(100000, 1000000));
+                $ctx = $context;
+                $ctx['orderData'] = [
+                    'id' => $order->id,
+                    'link' => $order->link,
+                    'requested' => $order->count,
+                ];
+                Log::info('processing order like: ', $ctx);
+
+                $exist = $this->order->findBJSID($order->id);
+                if ($exist) {
+                    Log::warning('Order already exist, skipping...', $ctx);
+
+                    continue;
+                }
+
+                try {
+                    $username = $this->bjsService->extractIdentifier($order->link);
+                    if ($username === null) {
+                        Log::warning('Shortcode is not valid, skipping...', $ctx);
+
+                        $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, 'Link is not valid');
+
+                        continue;
+                    }
+
+                    $info = $this->util->__IGGetInfo($username);
+                    Log::debug('ingfonya', ['info' => $info]);
+
+                    if (! $info->found) {
+                        Log::info('Userinfo is not found cancelling');
+                        $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, 'Cannot find user info');
+
+                        continue;
+                    }
+
+
+                    $getInfo = $this->util->BJSGetMediaData($shortcode);
+                    $info = $getInfo;
+                    unset($info->data);
+
+                    if (! $info->found || $info->owner_is_private) {
+                        Log::warning('Unable to fetch target data, skipping...', [
+                            'shortcode' => $shortcode,
+                            'info' => $info,
+                        ]);
+
+                        $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, $info->owner_is_private ? 'Account is private mode' : 'Media is not found');
+
+                        continue;
+                    }
+
+                    // Add daily limit check
+                    if (! $this->orderV2->canProcessLikeOrder($getInfo->media_id)) {
+                        Log::warning('Daily limit reached for media_id: ' . $getInfo->media_id, $ctx);
+                        $this->bjsCli->cancelOrder($order->id);
+                        $this->bjsCli->addCancelReason($order->id, 'Daily limit reached');
+
+                        continue;
+                    }
+
+                    $ctx['info'] = $info;
+                    Log::info('Succesfully fetching info, setting start count and changing to inprogress', [
+                        'start_count' => $info->like_count,
+                    ]);
+
+                    $this->bjsService->auth();
+                    sleep(1);
+                    $this->bjsCli->setStartCount($order->id, $info->like_count);
+                    sleep(1);
+                    $this->bjsCli->changeStatus($order->id, 'inprogress');
+
+                    $data = [
+                        'bjs_id' => $order->id,
+                        'kind' => 'like',
+                        'username' => $info->owner_username,
+                        'instagram_user_id' => $info->owner_id,
+                        'target' => $order->link,
+                        'reseller_name' => $order->user,
+                        'price' => $order->charge,
+                        'media_id' => $info->media_id,
+                        'start_count' => $info->like_count,
+                        'requested' => $order->count,
+                        'margin_request' => UtilClient::withOrderMargin($order->count),
+                        'status' => 'inprogress',
+                        'status_bjs' => 'inprogress',
+                        'source' => 'bjs',
+                    ];
+                    $this->order->createAndUpdateCache($data);
+
+                    Log::info('Order fetch info media success, processing next...');
+                } catch (\Throwable $th) {
+                    $this->logError($th, $ctx);
+
+                    continue;
+                }
+            }
+        }
+    }
+
     // public function processCachedOrders()
     // {
     //     Log::info('======================');

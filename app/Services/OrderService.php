@@ -11,8 +11,7 @@ class OrderService
 
     public function __construct(
         private Order $order
-    ) {
-    }
+    ) {}
 
     public function createAndUpdateCache(array $data)
     {
@@ -85,6 +84,8 @@ class OrderService
             "order:$id:processed",
             "order:$id:duplicate_interaction",
             "order:$id:requested",
+            "order:$id:failed",
+            "order:$id:first_interaction",
         ];
 
         return Redis::del($keys);
@@ -117,7 +118,7 @@ class OrderService
 
     public function isBlacklisted($pkID)
     {
-        return Redis::sismember('system:follow-blacklist', $pkID);
+        return Redis::sismember('system:order:follow-blacklist', $pkID);
     }
 
     public function getCurrentProccessed()

@@ -4,6 +4,7 @@ namespace App\Client;
 
 use App\Utils\InstagramID;
 use App\Utils\Util;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -124,6 +125,7 @@ class UtilClient
         ];
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            $resp['attempt'] = $attempt;
             try {
                 // Generate a new proxy URL for each attempt to avoid IP blocks
                 $proxy = Util::generateProxyUrl();
@@ -154,11 +156,14 @@ class UtilClient
                     }
 
                     // unset($user['edge_owner_to_timeline_media']);
-                    // unset($user['edge_felix_video_timeline']);
+                    unset($user['edge_related_profiles']);
+                    unset($user['edge_media_collections']);
+                    unset($user['edge_felix_video_timeline']);
                     // dump($user);
 
                     // Return full user profile data
                     return (object) [
+                        'attempt' => $attempt,
                         'username' => $username,
                         'found' => true,
                         'pk' => $user['id'],
@@ -167,6 +172,7 @@ class UtilClient
                         'total_media_timeline' => intval($user['edge_owner_to_timeline_media']['count']),
                         'follower_count' => $user['edge_followed_by']['count'],
                         'following_count' => $user['edge_follow']['count'],
+                        'latest_media' => Arr::get($user, 'edge_owner_to_timeline_media.edges.0.node'),
                     ];
                 }
 

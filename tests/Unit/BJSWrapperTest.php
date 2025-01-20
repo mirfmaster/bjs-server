@@ -19,10 +19,10 @@ class BJSWrapperTest extends TestCase
         parent::setUp();
 
         // Create real instances
-        $bjsClient = new BJSClient();
+        $bjsClient = new BJSClient;
         $bjsService = new BJSService($bjsClient);
-        $orderService = new OrderService(new \App\Models\Order(), new Redis());
-        $utilClient = new UtilClient();
+        $orderService = new OrderService(new \App\Models\Order, new Redis);
+        $utilClient = new UtilClient;
 
         $this->wrapper = new BJSWrapper(
             $bjsService,
@@ -65,6 +65,24 @@ class BJSWrapperTest extends TestCase
         $todayOrder = 0;
         // Execute the actual fetch
         $this->wrapper->fetchFollowOrder($watchlists, $todayOrder);
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
+
+    /**
+     * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_ig_get_info
+     */
+    public function test_ig_get_info(): void
+    {
+        // $this->markTestSkipped('Remove this line to run the test.');
+
+        $username = 'justinbieber';
+        $util = new UtilClient;
+        $info = $util->__IGGetInfo($username);
+        // __AUTO_GENERATED_PRINT_VAR_START__
+        dump('Variable: BJSWrapperTest#test_ig_get_info $info: "\n"', $info); // __AUTO_GENERATED_PRINT_VAR_END__
 
         // Test passes if no exceptions are thrown
         $this->assertTrue(true);

@@ -390,7 +390,6 @@ class UtilClient
                         'image_versions' => $media['image_versions2']['candidates'] ?? [],
                     ];
                 }
-                dd((string) $response->body(), $response->reason());
 
                 // Non-200 response or missing data
                 Log::warning('Failed to fetch Instagram media info', [

@@ -124,6 +124,7 @@ class UtilClient
         ];
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            sleep(1);
             try {
                 // Generate a new proxy URL for each attempt to avoid IP blocks
                 $proxy = Util::generateProxyUrl();
@@ -135,7 +136,8 @@ class UtilClient
                     'Referer' => 'https://www.instagram.com',
                     'X-ASBD-ID' => '129477',
                 ])
-                    ->timeout(6)
+                    ->timeout(5)
+                    ->connectTimeout(3)
                     ->withOptions(['proxy' => $proxy])
                     ->get('https://www.instagram.com/api/v1/users/web_profile_info/', [
                         'username' => $username,
@@ -145,7 +147,14 @@ class UtilClient
                 if ($response->status() === 404) {
                     return (object) $resp;
                 }
+                // Only retry on specific conditions
+                if ($response->status() === 429 || $response->status() >= 500) {
+                    // Calculate delay with exponential backoff
+                    $delay = min(pow(2, $attempt) * 100, 5000); // Max 5 seconds delay
+                    usleep($delay * 1000); // Convert to microseconds
 
+                    continue;
+                }
                 // Process successful response
                 if ($response->successful() && isset($response['data']['user'])) {
                     $user = $response['data']['user'];
@@ -246,6 +255,7 @@ class UtilClient
         $resp = ['found' => false];
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            sleep(1);
             try {
                 $headers = [
                     'Accept-Language' => 'en-US,en;q=0.9',
@@ -265,11 +275,20 @@ class UtilClient
                 $proxy = Util::generateProxyUrl();
                 $response = Http::withHeaders($headers)
                     ->timeout(5)
+                    ->connectTimeout(3)
                     ->withOptions(['proxy' => $proxy])
                     ->get('https://www.instagram.com/graphql/query/', [
                         // 'query_hash' => 'b3055c01b4b222b8a47dc12b090e4e64',
                         'variables' => json_encode($graphqlVariables),
                     ]);
+
+                if ($response->status() === 429 || $response->status() >= 500) {
+                    // Calculate delay with exponential backoff
+                    $delay = max(pow(2, $attempt) * 100, 1000); // Max 1 second delay
+                    usleep($delay * 1000); // Convert to microseconds
+
+                    continue;
+                }
 
                 // Handle successful response
                 if ($response->successful() && isset($response['data']['shortcode_media'])) {

@@ -32,6 +32,7 @@ class Worker extends Model
         'on_work',
         'last_work',
         'data',
+        'secret_key_2fa',
     ];
 
     /**

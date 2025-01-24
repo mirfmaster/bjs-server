@@ -520,7 +520,8 @@ class BJSWrapper
     }
 
     /**
-     * Handle orders in 'inprogress' status
+     * Handle orders in 'inprogress' status with the redis status is other than the processing, completed, partial, cancel
+     * Actor who change the redis status is worker
      */
     private function handleInProgressOrder($order, string $redisStatus, int $remainingCount, array $context): void
     {

@@ -18,7 +18,7 @@ class OrderController extends Controller
 
     public function __construct()
     {
-        $this->orderService = new OrderService(new Order());
+        $this->orderService = new OrderService(new Order);
     }
 
     public function index(Request $request)
@@ -125,7 +125,7 @@ class OrderController extends Controller
         $requested = $request->requested;
         $marginRequest = $requested + (ceil($requested * 0.1));
 
-        $order = new Order();
+        $order = new Order;
         $order->source = 'direct';
         $order->status = 'processing';
         $order->status_bjs = 'processing';
@@ -135,7 +135,7 @@ class OrderController extends Controller
         $order->priority = 3;
         $order->margin_request = $marginRequest;
 
-        $bjsService = new BJSService(new BJSClient());
+        $bjsService = new BJSService(new BJSClient);
         $identifier = $bjsService->extractIdentifier($target);
 
         if ($type == 'follow') {
@@ -264,29 +264,44 @@ class OrderController extends Controller
             return back()->with('error', 'Cannot delete BJS order because login state is false');
         }
 
+        $this->orderService->setOrderID($order->id);
+        $newStatus = $this->orderService->evaluateOrderStatus();
+
+        $string = '';
         if ($order->source === 'bjs') {
-            $cli = new BJSService(new BJSClient());
+            $cli = new BJSService(new BJSClient);
             $resp = $cli->auth();
             if (! $resp) {
-                return back()->with('erro', 'BJS Cli auth failed, please retry');
+                return back()->with('error', 'BJS Cli auth failed, please retry');
             }
-            $cli->bjs->cancelOrder($order->bjs_id);
+
+            if ($newStatus === 'cancel') {
+                $updateReq = $cli->bjs->cancelOrder($order->bjs_id);
+                $string += 'StatusUpdate: ' . $updateReq ? 'TRUE' : 'FALSE';
+            } elseif ($newStatus === 'partial') {
+                $remainingCount = $this->orderService->getRemains();
+                $remainingUpdated = $cli->bjs->setRemains($order->bjs_id, $remainingCount);
+                $string += 'RemainUpdate: ' . $remainingUpdated ? 'TRUE' : 'FALSE';
+
+                $updateReq = $cli->bjs->changeStatus($order->bjs_id, $newStatus);
+                $string += 'StatusUpdate: ' . $updateReq ? 'TRUE' : 'FALSE';
+            }
         }
+
         $order->update([
-            'status' => 'cancel',
-            'status_bjs' => 'cancel',
+            'status' => $newStatus,
+            'status_bjs' => $newStatus,
         ]);
-        $this->orderService->setOrderID($order->id);
-        $this->orderService->setStatusRedis('cancel');
+        $this->orderService->setStatusRedis($newStatus);
         $this->orderService->updateCache();
 
-        return back()->with('success', 'Order deleted successfully');
+        return back()->with('success', 'Order deleted successfully. ');
     }
 
     public function refill(Order $order)
     {
         $previousTarget = $order->requested + $order->start_count;
-        $bjsService = new BJSService(new BJSClient());
+        $bjsService = new BJSService(new BJSClient);
         $identifier = $bjsService->extractIdentifier($order->target);
 
         try {

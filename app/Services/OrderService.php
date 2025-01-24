@@ -135,6 +135,25 @@ class OrderService
         $this->id = $id;
     }
 
+    public function getRemains(): int
+    {
+        $processed = Redis::get("order:$this->id:processed") ?? 0;
+        $requested = Redis::get("order:$this->id:requested") ?? 0;
+
+        return $requested - $processed;
+    }
+
+    public function evaluateOrderStatus(): string
+    {
+        $processed = Redis::get("order:$this->id:processed") ?? 0;
+        $requested = Redis::get("order:$this->id:requested") ?? 0;
+        if ($processed >= $requested) {
+            return 'completed';
+        }
+
+        return $processed > 0 ? 'partial' : 'cancel';
+    }
+
     public function setStatusRedis($status)
     {
         Redis::set("order:$this->id:status", $status);

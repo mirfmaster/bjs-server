@@ -1,4 +1,5 @@
 app/Jobs/*
+app/Console/Commands/*
 app/Models/*
 app/Services/*
 app/Wrapper/*

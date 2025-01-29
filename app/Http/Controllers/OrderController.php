@@ -18,7 +18,7 @@ class OrderController extends Controller
 
     public function __construct()
     {
-        $this->orderService = new OrderService(new Order);
+        $this->orderService = new OrderService(new Order());
     }
 
     public function index(Request $request)
@@ -125,7 +125,7 @@ class OrderController extends Controller
         $requested = $request->requested;
         $marginRequest = $requested + (ceil($requested * 0.1));
 
-        $order = new Order;
+        $order = new Order();
         $order->source = 'direct';
         $order->status = 'processing';
         $order->status_bjs = 'processing';
@@ -135,7 +135,7 @@ class OrderController extends Controller
         $order->priority = 3;
         $order->margin_request = $marginRequest;
 
-        $bjsService = new BJSService(new BJSClient);
+        $bjsService = new BJSService(new BJSClient());
         $identifier = $bjsService->extractIdentifier($target);
 
         if ($type == 'follow') {
@@ -144,7 +144,7 @@ class OrderController extends Controller
                 $data = $this->getUserData($identifier);
                 $order->username = $data['username'];
             } catch (\Exception $e) {
-                return back()->with('error', 'Failed to fetch user data: ' . $e->getMessage());
+                return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
             }
         } elseif ($type == 'like') {
             try {
@@ -152,7 +152,7 @@ class OrderController extends Controller
                 $order->username = $data['owner_username'];
                 $order->media_id = $data['pk'];
             } catch (\Exception $e) {
-                return back()->with('error', 'Failed to fetch media data: ' . $e->getMessage());
+                return back()->with('error', 'Failed to fetch media data: '.$e->getMessage());
             }
         }
 
@@ -260,48 +260,52 @@ class OrderController extends Controller
 
     public function destroy(Order $order)
     {
-        if ($order->source === 'bjs' && ! (bool) Redis::get('system:bjs:login-state')) {
-            return back()->with('error', 'Cannot delete BJS order because login state is false');
-        }
-
-        $this->orderService->setOrderID($order->id);
-        $newStatus = $this->orderService->evaluateOrderStatus();
-
-        $string = '';
-        if ($order->source === 'bjs') {
-            $cli = new BJSService(new BJSClient);
-            $resp = $cli->auth();
-            if (! $resp) {
-                return back()->with('error', 'BJS Cli auth failed, please retry');
+        try {
+            if ($order->source === 'bjs' && ! (bool) Redis::get('system:bjs:login-state')) {
+                return back()->with('error', 'Cannot delete BJS order because login state is false');
             }
 
-            if ($newStatus === 'cancel') {
-                $updateReq = $cli->bjs->cancelOrder($order->bjs_id);
-                $string += 'StatusUpdate: ' . $updateReq ? 'TRUE' : 'FALSE';
-            } elseif ($newStatus === 'partial') {
-                $remainingCount = $this->orderService->getRemains();
-                $remainingUpdated = $cli->bjs->setRemains($order->bjs_id, $remainingCount);
-                $string += 'RemainUpdate: ' . $remainingUpdated ? 'TRUE' : 'FALSE';
+            $this->orderService->setOrderID($order->id);
+            $newStatus = $this->orderService->evaluateOrderStatus();
 
-                $updateReq = $cli->bjs->changeStatus($order->bjs_id, $newStatus);
-                $string += 'StatusUpdate: ' . $updateReq ? 'TRUE' : 'FALSE';
+            $string = '';
+            if ($order->source === 'bjs') {
+                $cli = new BJSService(new BJSClient());
+                $resp = $cli->auth();
+                if (! $resp) {
+                    return back()->with('error', 'BJS Cli auth failed, please retry');
+                }
+
+                if ($newStatus === 'cancel') {
+                    $updateReq = $cli->bjs->cancelOrder($order->bjs_id);
+                    $string .= 'StatusUpdate: '.($updateReq ? 'TRUE' : 'FALSE');
+                } elseif ($newStatus === 'partial') {
+                    $remainingCount = $this->orderService->getRemains();
+                    $remainingUpdated = $cli->bjs->setRemains($order->bjs_id, $remainingCount);
+                    $string .= 'RemainUpdate: '.($remainingUpdated ? 'TRUE' : 'FALSE');
+
+                    $updateReq = $cli->bjs->changeStatus($order->bjs_id, $newStatus);
+                    $string .= 'StatusUpdate: '.($updateReq ? 'TRUE' : 'FALSE');
+                }
             }
+
+            $order->update([
+                'status' => $newStatus,
+                'status_bjs' => $newStatus,
+            ]);
+            $this->orderService->setStatusRedis($newStatus);
+            $this->orderService->updateCache();
+
+            return back()->with('success', 'Order deleted successfully. '.$string);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to delete order: '.$e->getMessage());
         }
-
-        $order->update([
-            'status' => $newStatus,
-            'status_bjs' => $newStatus,
-        ]);
-        $this->orderService->setStatusRedis($newStatus);
-        $this->orderService->updateCache();
-
-        return back()->with('success', 'Order deleted successfully. ');
     }
 
     public function refill(Order $order)
     {
         $previousTarget = $order->requested + $order->start_count;
-        $bjsService = new BJSService(new BJSClient);
+        $bjsService = new BJSService(new BJSClient());
         $identifier = $bjsService->extractIdentifier($order->target);
 
         try {
@@ -335,7 +339,7 @@ class OrderController extends Controller
 
             return back()->with('success', 'Order is back to current process with status refill');
         } catch (\Exception $e) {
-            return back()->with('error', "Failed to fetch {$order->kind} data: " . $e->getMessage());
+            return back()->with('error', "Failed to fetch {$order->kind} data: ".$e->getMessage());
         }
     }
 

@@ -8,8 +8,10 @@ class Util
     {
         $characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
         $random_string = substr(str_shuffle($characters), 0, $length);
+        $username = config('app.pyproxy_username');
+        $password = config('app.pyproxy_password');
 
-        $proxy = "http://workerv3-zone-resi-region-id-st-jakarta-city-jakarta-session-$random_string-sessTime-10:kawabungaa99@d169f2e23873ee25.tuf.as.pyproxy.io:16666";
+        $proxy = "http://{$username}-zone-resi-region-id-st-jakarta-city-jakarta-session-$random_string-sessTime-10:{$password}@d169f2e23873ee25.tuf.as.pyproxy.io:16666";
 
         return $proxy;
     }

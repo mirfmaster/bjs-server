@@ -219,4 +219,7 @@ return [
 
     'proxy_url' => env('PROXY_URL'),
     'proxy_api_key' => env('PROXY_API_KEY'),
+
+    'pyproxy_username' => env('PYPROXY_USERNAME'),
+    'pyproxy_password' => env('PYPROXY_PASSWORD'),
 ];

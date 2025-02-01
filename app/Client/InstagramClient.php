@@ -29,8 +29,8 @@ class InstagramClient
 
     public function __construct()
     {
-        $this->proxyManager = new ProxyManager();
-        $this->preferredProxyType = Config::get('app.preferred_proxy', ProxyManager::MANAGEDPROXY);
+        $this->proxyManager = new ProxyManager;
+        $this->preferredProxyType = Config::get('app.preferred_proxy');
     }
 
     public function fetchProfile(string $username, int $maxRetries = 4)
@@ -72,9 +72,7 @@ class InstagramClient
 
         if (! $proxy) {
             // Try fallback proxy type
-            $fallbackType = $this->preferredProxyType === ProxyManager::PYPROXY
-                ? ProxyManager::MANAGEDPROXY
-                : ProxyManager::PYPROXY;
+            $fallbackType = ProxyManager::PYPROXY;
 
             $proxy = $this->proxyManager->getAvailableProxy($fallbackType);
         }
@@ -119,7 +117,7 @@ class InstagramClient
             ];
         }
 
-        throw new \Exception('Failed to fetch profile: ' . $response->body());
+        throw new \Exception('Failed to fetch profile: '.$response->body());
     }
 
     private function handleRequestError(\Exception $e, int $attempt, int $maxRetries): bool
@@ -175,4 +173,3 @@ class InstagramClient
         return false;
     }
 }
-

@@ -10,6 +10,10 @@ class ProxyManager
 {
     use LoggerTrait;
 
+    public const PYPROXY = 'pyproxy';
+
+    public const MANAGEDPROXY = 'managed';
+
     private string $managedProxyUrl;
 
     private string $managedProxyApiKey;
@@ -26,38 +30,95 @@ class ProxyManager
         $this->pyProxyPassword = config('app.pyproxy_password');
     }
 
-    public function getAvailableProxy(): ?array
+    /**
+     * Get a specific managed proxy by its label
+     */
+    public function getManagedProxy(string $label): ?array
     {
-        // Try managed proxies first
-        $managedProxies = $this->getActiveProxies();
+        try {
+            $response = Http::get($this->buildUrl('/api/get-by-label-proxy'), [
+                'proxy_label' => $label,
+            ]);
 
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $proxy = $response->json()['data'] ?? null;
+            if (! $proxy || ! ($proxy['status'] ?? false) || ($proxy['is_rotating'] ?? false)) {
+                return null;
+            }
+
+            return [
+                'type' => self::MANAGEDPROXY,
+                'label' => $proxy['proxy_label'],
+                'connection_string' => $this->formatProxyString($proxy),
+            ];
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return null;
+        }
+    }
+
+    /**
+     * Get a specific PyProxy with a custom session ID
+     */
+    public function getPyProxy(?string $sessionId = null): array
+    {
+        return [
+            'type' => self::PYPROXY,
+            'label' => $sessionId,
+            'connection_string' => $this->generatePyProxyUrl($sessionId),
+        ];
+    }
+
+    /**
+     * Get any available proxy with optional preference
+     */
+    public function getAvailableProxy(?string $preferredType = null): ?array
+    {
+        if ($preferredType === self::PYPROXY) {
+            return $this->getPyProxy();
+        }
+
+        if ($preferredType === self::MANAGEDPROXY) {
+            $managedProxies = $this->getActiveProxies();
+            if ($managedProxies->isNotEmpty()) {
+                $proxy = $managedProxies->random();
+
+                return [
+                    'type' => self::MANAGEDPROXY,
+                    'label' => $proxy['proxy_label'],
+                    'connection_string' => $this->formatProxyString($proxy),
+                ];
+            }
+
+            return null;
+        }
+
+        // No preference - try managed first, then fallback to PyProxy
+        $managedProxies = $this->getActiveProxies();
         if ($managedProxies->isNotEmpty()) {
             $proxy = $managedProxies->random();
 
             return [
-                'type' => 'managed',
+                'type' => self::MANAGEDPROXY,
                 'label' => $proxy['proxy_label'],
                 'connection_string' => $this->formatProxyString($proxy),
             ];
         }
 
-        // Fallback to PyProxy if no managed proxies available
-        return [
-            'type' => 'pyproxy',
-            'label' => null, // PyProxy doesn't need a label for rotation
-            'connection_string' => $this->generatePyProxyUrl(),
-        ];
+        return $this->getPyProxy();
     }
 
-    public function rotateProxy(?string $label, string $type = 'managed'): bool
+    public function rotateProxy(?string $label, string $type = self::MANAGEDPROXY): bool
     {
-        if ($type === 'managed' && $label) {
+        if ($type === self::MANAGEDPROXY && $label) {
             return $this->rotateIp($label);
         }
 
-        if ($type === 'pyproxy') {
-            // For PyProxy, we don't need to call any rotation API
-            // A new session will be created with the next generatePyProxyUrl call
+        if ($type === self::PYPROXY) {
             return true;
         }
 
@@ -100,22 +161,24 @@ class ProxyManager
         }
     }
 
-    private function generatePyProxyUrl(int $length = 12): string
+    private function generatePyProxyUrl(?string $sessionId = null): string
     {
-        $characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-        $random_string = substr(str_shuffle($characters), 0, $length);
+        if (! $sessionId) {
+            $characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            $sessionId = substr(str_shuffle($characters), 0, 12);
+        }
 
         return sprintf(
             'http://%s-zone-resi-region-id-st-jakarta-city-jakarta-session-%s-sessTime-10:%s@d169f2e23873ee25.tuf.as.pyproxy.io:16666',
             $this->pyProxyUsername,
-            $random_string,
+            $sessionId,
             $this->pyProxyPassword
         );
     }
 
     private function buildUrl(string $endpoint): string
     {
-        return $this->managedProxyUrl . $endpoint . '?api_key=' . $this->managedProxyApiKey;
+        return $this->managedProxyUrl.$endpoint.'?api_key='.$this->managedProxyApiKey;
     }
 
     private function formatProxyString(array $proxyData): string
@@ -130,4 +193,3 @@ class ProxyManager
         );
     }
 }
-

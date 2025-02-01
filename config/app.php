@@ -1,5 +1,6 @@
 <?php
 
+use App\Client\ProxyManager;
 use Illuminate\Support\Facades\Facade;
 
 return [
@@ -223,5 +224,5 @@ return [
     'pyproxy_username' => env('PYPROXY_USERNAME'),
     'pyproxy_password' => env('PYPROXY_PASSWORD'),
 
-    'preferred_proxy' => env('PREFERRED_PROXY'),
+    'preferred_proxy' => env('PREFERRED_PROXY', ProxyManager::MANAGEDPROXY),
 ];

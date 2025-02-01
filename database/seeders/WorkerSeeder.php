@@ -87,9 +87,9 @@ class WorkerSeeder extends Seeder
         DB::beginTransaction();
 
         try {
-            // Truncate the workers table
-            $this->command->info('Truncating workers table...');
-            Worker::truncate();
+            // // Truncate the workers table
+            // $this->command->info('Truncating workers table...');
+            // Worker::truncate();
 
             // Read CSV file
             $handle = fopen($path, 'r');

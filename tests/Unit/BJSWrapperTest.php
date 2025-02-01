@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Client\BJSClient;
+use App\Client\InstagramClient;
 use App\Client\UtilClient;
 use App\Services\BJSService;
 use App\Services\OrderService;
@@ -19,10 +20,10 @@ class BJSWrapperTest extends TestCase
         parent::setUp();
 
         // Create real instances
-        $bjsClient = new BJSClient();
+        $bjsClient = new BJSClient;
         $bjsService = new BJSService($bjsClient);
-        $orderService = new OrderService(new \App\Models\Order(), new Redis());
-        $utilClient = new UtilClient();
+        $orderService = new OrderService(new \App\Models\Order, new Redis);
+        $utilClient = new UtilClient;
 
         $this->wrapper = new BJSWrapper(
             $bjsService,
@@ -83,6 +84,85 @@ class BJSWrapperTest extends TestCase
 
         $orders = $this->wrapper->bjsService->getOrdersData(164, 0);
         $orders = $orders->sortBy('created');
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
+
+    /**
+     * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_fetch_proxy
+     */
+    public function test_fetch_proxy(): void
+    {
+        // $this->markTestSkipped('Remove this line to run the test.');
+
+        // Real service IDs for follow orders
+        $this->wrapper->bjsService->auth();
+
+        $orders = $this->wrapper->bjsService->getOrdersData(164, 4);
+        $orders = $orders->sortBy('created');
+
+        // __AUTO_GENERATED_PRINTF_START__
+        dump('Debugging: BJSWrapperTest#test_fetch_proxy 1'); // __AUTO_GENERATED_PRINTF_END__
+        foreach ($orders as $order) {
+            // __AUTO_GENERATED_PRINTF_START__
+            dump('Debugging: BJSWrapperTest#test_fetch_proxy 2'); // __AUTO_GENERATED_PRINTF_END__
+            try {
+                $username = $this->wrapper->bjsService->extractIdentifier($order->link);
+                if ($username == '') {
+                    continue;
+                }
+
+                try {
+                    $client = new InstagramClient;
+                    // __AUTO_GENERATED_PRINT_VAR_START__
+                    dump('Variable: BJSWrapperTest#test_fetch_proxy $username: "\n"', $username); // __AUTO_GENERATED_PRINT_VAR_END__
+                    $info = $client->fetchProfile($username);
+                    dd($info);
+                } catch (\Exception $e) {
+                    // __AUTO_GENERATED_PRINT_VAR_START__
+                    dump('Variable: BJSWrapperTest#test_fetch_proxy $e: "\n"', $e); // __AUTO_GENERATED_PRINT_VAR_END__
+                }
+
+                // if (! $info->found) {
+                //     dump('NOT FOUND');
+                //
+                //     continue;
+                // }
+                //
+                // if ($info->is_private) {
+                //     dump('PRIVATE');
+                //
+                //     continue;
+                // }
+
+                // $start = $info->follower_count;
+                // $requested = $order->count;
+                // $data = [
+                //     'bjs_id' => $order->id,
+                //     'kind' => 'follow',
+                //     'username' => $username,
+                //     'instagram_user_id' => $info->pk,
+                //     'target' => $order->link,
+                //     'reseller_name' => $order->user,
+                //     'price' => $order->charge,
+                //     'start_count' => $start,
+                //     'requested' => $requested,
+                //     'margin_request' => UtilClient::withOrderMargin($requested),
+                //     'status' => 'inprogress',
+                //     'status_bjs' => 'inprogress',
+                //     'source' => 'bjs',
+                // ];
+                // __AUTO_GENERATED_PRINTF_START__
+                dump('Debugging: BJSWrapperTest#test_fetch_proxy 1'); // __AUTO_GENERATED_PRINTF_END__
+            } catch (\Throwable $th) {
+                // __AUTO_GENERATED_PRINT_VAR_START__
+                dump('Variable: BJSWrapperTest#test_fetch_proxy $th: "\n"', $th); // __AUTO_GENERATED_PRINT_VAR_END__
+
+                continue;
+            }
+        }
 
         // Test passes if no exceptions are thrown
         $this->assertTrue(true);

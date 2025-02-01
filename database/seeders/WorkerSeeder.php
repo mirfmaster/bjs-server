@@ -119,6 +119,7 @@ class WorkerSeeder extends Seeder
                 $worker = [
                     'username' => $row['username'] ?? null,
                     'password' => $row['password'] ?? null,
+                    'secret_key_2fa' => $row['secret_key_2fa'] ?? null,
                     'status' => $row['status'] ?? 'relogin',
                     'followers_count' => $this->convertToInt($row['followers_count'] ?? null),
                     'following_count' => $this->convertToInt($row['following_count'] ?? null),

@@ -72,8 +72,8 @@ class WorkerSeeder extends Seeder
         //     return;
         // }
 
-        $filename = 'workers.csv';
-        $path = storage_path('app/assets/prod/'.$filename);
+        $filename = 'workers_2fa.csv';
+        $path = storage_path('app/assets/prod/' . $filename);
 
         if (! file_exists($path)) {
             $this->command->error("CSV file not found: {$path}");
@@ -119,7 +119,7 @@ class WorkerSeeder extends Seeder
                 $worker = [
                     'username' => $row['username'] ?? null,
                     'password' => $row['password'] ?? null,
-                    'status' => $row['status'] ?? null,
+                    'status' => $row['status'] ?? 'relogin',
                     'followers_count' => $this->convertToInt($row['followers_count'] ?? null),
                     'following_count' => $this->convertToInt($row['following_count'] ?? null),
                     'media_count' => $this->convertToInt($row['media_count'] ?? null),
@@ -157,10 +157,9 @@ class WorkerSeeder extends Seeder
             DB::commit();
 
             $this->command->info("Successfully imported {$totalProcessed} workers.");
-
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->command->error('Error importing workers: '.$e->getMessage());
+            $this->command->error('Error importing workers: ' . $e->getMessage());
             throw $e;
         }
     }

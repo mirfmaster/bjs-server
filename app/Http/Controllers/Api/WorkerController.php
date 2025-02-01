@@ -53,6 +53,14 @@ class WorkerController extends Controller
             ->where('is_max_following_error', true)
             ->count();
 
+        $twoFactors = Worker::query()
+            ->whereNotNull('secret_key_2fa')
+            ->count();
+        $twoFactorsActive = Worker::query()
+            ->whereNotNull('secret_key_2fa')
+            ->where('status', 'active')
+            ->count();
+
         return view('pages.workers', [
             'total' => $workerCounters,
             'statusCounts' => $statusCounts,
@@ -60,6 +68,10 @@ class WorkerController extends Controller
                 'daily' => $dailyNewWorkers,
                 'weekly' => $weeklyNewWorkers,
                 'monthly' => $monthlyNewWorkers,
+            ],
+            'twoFactors' => [
+                'all' => $twoFactors,
+                'active' => $twoFactorsActive,
             ],
             'activeMaxFollow' => $activeMaxFollow,
             'locks' => [

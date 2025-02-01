@@ -222,4 +222,6 @@ return [
 
     'pyproxy_username' => env('PYPROXY_USERNAME'),
     'pyproxy_password' => env('PYPROXY_PASSWORD'),
+
+    'preferred_proxy' => env('PREFERRED_PROXY'),
 ];

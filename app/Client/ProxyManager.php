@@ -5,171 +5,79 @@ namespace App\Client;
 use App\Traits\LoggerTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class ProxyManager
 {
     use LoggerTrait;
 
-    private $baseUrl;
+    private string $managedProxyUrl;
 
-    private $apiKey;
+    private string $managedProxyApiKey;
+
+    private string $pyProxyUsername;
+
+    private string $pyProxyPassword;
 
     public function __construct()
     {
-        $this->baseUrl = config('app.proxy_url');
-        $this->apiKey = config('app.proxy_api_key');
+        $this->managedProxyUrl = config('app.proxy_url');
+        $this->managedProxyApiKey = config('app.proxy_api_key');
+        $this->pyProxyUsername = config('app.pyproxy_username');
+        $this->pyProxyPassword = config('app.pyproxy_password');
     }
 
-    /**
-     * Get list of all available proxies
-     *
-     * @return array Array of proxy details
-     */
-    public function getAllProxies(): array
+    public function getAvailableProxy(): ?array
+    {
+        // Try managed proxies first
+        $managedProxies = $this->getActiveProxies();
+
+        if ($managedProxies->isNotEmpty()) {
+            $proxy = $managedProxies->random();
+
+            return [
+                'type' => 'managed',
+                'label' => $proxy['proxy_label'],
+                'connection_string' => $this->formatProxyString($proxy),
+            ];
+        }
+
+        // Fallback to PyProxy if no managed proxies available
+        return [
+            'type' => 'pyproxy',
+            'label' => null, // PyProxy doesn't need a label for rotation
+            'connection_string' => $this->generatePyProxyUrl(),
+        ];
+    }
+
+    public function rotateProxy(?string $label, string $type = 'managed'): bool
+    {
+        if ($type === 'managed' && $label) {
+            return $this->rotateIp($label);
+        }
+
+        if ($type === 'pyproxy') {
+            // For PyProxy, we don't need to call any rotation API
+            // A new session will be created with the next generatePyProxyUrl call
+            return true;
+        }
+
+        return false;
+    }
+
+    public function getActiveProxies(): Collection
     {
         try {
             $response = Http::get($this->buildUrl('/api/get-all-proxy'));
 
             if (! $response->successful()) {
-                Log::error('Failed to get proxies', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return [];
+                return collect([]);
             }
 
-            $data = $response->json();
+            $proxies = collect($response->json()['data'] ?? []);
 
-            return $data['data'] ?? [];
-        } catch (\Throwable $th) {
-            $this->logError($th);
-
-            return [];
-        }
-    }
-
-    /**
-     * Get proxy details by label
-     *
-     * @param  string  $label  Proxy label/identifier
-     * @return array|null Proxy details or null if not found
-     */
-    public function getProxyByLabel(string $label): ?array
-    {
-        try {
-            $response = Http::get($this->buildUrl('/api/get-by-label-proxy'), [
-                'proxy_label' => $label,
-            ]);
-
-            if (! $response->successful()) {
-                Log::error('Failed to get proxy by label', [
-                    'label' => $label,
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return null;
-            }
-
-            $data = $response->json();
-
-            return $data['data'] ?? null;
-        } catch (\Throwable $th) {
-            $this->logError($th, ['label' => $label]);
-
-            return null;
-        }
-    }
-
-    /**
-     * Rotate IP for specific proxy
-     *
-     * @param  string  $label  Proxy label to rotate
-     * @return bool Whether rotation was successful
-     */
-    public function rotateIp(string $label): bool
-    {
-        try {
-            $response = Http::get($this->buildUrl('/api/rotate-ip'), [
-                'proxy_label' => $label,
-            ]);
-
-            if (! $response->successful()) {
-                Log::error('Failed to rotate IP', [
-                    'label' => $label,
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return false;
-            }
-
-            $data = $response->json();
-
-            return $data['status'] ?? false;
-        } catch (\Throwable $th) {
-            $this->logError($th, ['label' => $label]);
-
-            return false;
-        }
-    }
-
-    /**
-     * Rotate IPs for all proxies
-     *
-     * @return array Result of rotation containing success count and failed count
-     */
-    public function rotateAllIps(): array
-    {
-        try {
-            $response = Http::get($this->buildUrl('/api/rotate-ip-all-proxy'));
-
-            if (! $response->successful()) {
-                Log::error('Failed to rotate all IPs', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return [
-                    'success_rotate' => 0,
-                    'failed_rotate' => 0,
-                ];
-            }
-
-            $data = $response->json();
-
-            return [
-                'success_rotate' => $data['success_rotate'] ?? 0,
-                'failed_rotate' => $data['failed_rotate'] ?? 0,
-            ];
-        } catch (\Throwable $th) {
-            $this->logError($th);
-
-            return [
-                'success_rotate' => 0,
-                'failed_rotate' => 0,
-            ];
-        }
-    }
-
-    /**
-     * Get list of active proxies with their status
-     * Always fetches fresh data from API
-     *
-     * @return Collection Collection of active proxies
-     */
-    public function getActiveProxies(): Collection
-    {
-        try {
-            $allProxies = collect($this->getAllProxies());
-
-            // Filter for active proxies
-            return $allProxies->filter(function ($proxy) {
+            return $proxies->filter(function ($proxy) {
                 return ($proxy['status'] ?? false) && ! ($proxy['is_rotating'] ?? false);
             })->values();
-
         } catch (\Throwable $th) {
             $this->logError($th);
 
@@ -177,79 +85,49 @@ class ProxyManager
         }
     }
 
-    /**
-     * Get status of all proxies
-     * Always fetches fresh data from API
-     *
-     * @return array Array of proxy labels and their active status
-     */
-    public function getProxyStatus(): array
+    private function rotateIp(string $label): bool
     {
         try {
-            $allProxies = $this->getAllProxies();
+            $response = Http::get($this->buildUrl('/api/rotate-ip'), [
+                'proxy_label' => $label,
+            ]);
 
-            return collect($allProxies)->mapWithKeys(function ($proxy) {
-                $label = $proxy['proxy_label'];
-
-                return [
-                    $label => ($proxy['status'] ?? false) && ! ($proxy['is_rotating'] ?? false),
-                ];
-            })->toArray();
-
+            return $response->successful() && ($response->json()['status'] ?? false);
         } catch (\Throwable $th) {
-            $this->logError($th);
+            $this->logError($th, ['label' => $label]);
 
-            return [];
-        }
-    }
-
-    /**
-     * Check if a specific proxy is active and available
-     * Always fetches fresh data from API
-     *
-     * @param  string  $label  Proxy label to check
-     * @return bool Whether proxy is active and available
-     */
-    public function isProxyActive(string $label): bool
-    {
-        $proxy = $this->getProxyByLabel($label);
-        if (! $proxy) {
             return false;
         }
-
-        return ($proxy['status'] ?? false) && ! ($proxy['is_rotating'] ?? false);
     }
 
-    /**
-     * Build URL with API key
-     */
-    private function buildUrl(string $endpoint): string
+    private function generatePyProxyUrl(int $length = 12): string
     {
-        return $this->baseUrl.$endpoint.'?api_key='.$this->apiKey;
-    }
-
-    /**
-     * Format proxy details into connection string
-     * sample: http://user:pass@host:port
-     *
-     * @param  array  $proxyData  Proxy details from API
-     * @return string Formatted proxy connection string
-     */
-    public function formatProxyString(array $proxyData): string
-    {
-        $type = $proxyData['proxy_type'] ?? 'http';
-        $username = $proxyData['proxy_username'] ?? '';
-        $password = $proxyData['proxy_password'] ?? '';
-        $ip = $proxyData['proxy_ip'] ?? '';
-        $port = $proxyData['proxy_port'] ?? '';
+        $characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        $random_string = substr(str_shuffle($characters), 0, $length);
 
         return sprintf(
+            'http://%s-zone-resi-region-id-st-jakarta-city-jakarta-session-%s-sessTime-10:%s@d169f2e23873ee25.tuf.as.pyproxy.io:16666',
+            $this->pyProxyUsername,
+            $random_string,
+            $this->pyProxyPassword
+        );
+    }
+
+    private function buildUrl(string $endpoint): string
+    {
+        return $this->managedProxyUrl . $endpoint . '?api_key=' . $this->managedProxyApiKey;
+    }
+
+    private function formatProxyString(array $proxyData): string
+    {
+        return sprintf(
             '%s://%s:%s@%s:%s',
-            $type,
-            $username,
-            $password,
-            $ip,
-            $port
+            $proxyData['proxy_type'] ?? 'http',
+            $proxyData['proxy_username'] ?? '',
+            $proxyData['proxy_password'] ?? '',
+            $proxyData['proxy_ip'] ?? '',
+            $proxyData['proxy_port'] ?? ''
         );
     }
 }
+

@@ -18,13 +18,34 @@ class WorkerController extends Controller
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->orderByRaw("array_position(
-                ARRAY['active', 'relogin', 'new_login']
-            , status), status")
+            ARRAY['active', 'relogin', 'new_login']
+        , status), status")
             ->get();
+
         $workerCounters = Worker::query()->count();
-        $newWorkers = Worker::query()
-            ->where('status', 'new_login')
+
+        // Daily new workers (today)
+        $dailyNewWorkers = Worker::query()
+            ->where('code', 'bjs:indofoll-job')
             ->whereDate('created_at', Carbon::today())
+            ->count();
+
+        // Weekly new workers (last 7 days)
+        $weeklyNewWorkers = Worker::query()
+            ->where('code', 'bjs:indofoll-job')
+            ->whereBetween('created_at', [
+                Carbon::now()->subDays(7)->startOfDay(),
+                Carbon::now()->endOfDay(),
+            ])
+            ->count();
+
+        // Monthly new workers (last 30 days)
+        $monthlyNewWorkers = Worker::query()
+            ->where('code', 'bjs:indofoll-job')
+            ->whereBetween('created_at', [
+                Carbon::now()->subDays(30)->startOfDay(),
+                Carbon::now()->endOfDay(),
+            ])
             ->count();
 
         $activeMaxFollow = Worker::query()
@@ -35,7 +56,11 @@ class WorkerController extends Controller
         return view('pages.workers', [
             'total' => $workerCounters,
             'statusCounts' => $statusCounts,
-            'newWorkers' => $newWorkers,
+            'newWorkers' => [
+                'daily' => $dailyNewWorkers,
+                'weekly' => $weeklyNewWorkers,
+                'monthly' => $monthlyNewWorkers,
+            ],
             'activeMaxFollow' => $activeMaxFollow,
             'locks' => [
                 'follow' => count(Redis::keys('worker:*:lock-follow')) ?? 0,
@@ -98,7 +123,7 @@ class WorkerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update worker status: '.$e->getMessage(),
+                'message' => 'Failed to update worker status: ' . $e->getMessage(),
             ], 500);
         }
     }

@@ -11,12 +11,17 @@
                             <div class="col-8">
                                 <div class="numbers">
                                     <p class="text-sm mb-0 text-uppercase font-weight-bold">New Workers</p>
-                                    <h5 class="font-weight-bolder">
-                                        {{ $newWorkers }}
-                                    </h5>
-                                    <p class="mb-0">
-                                        <span class="text-success text-sm font-weight-bolder"><br></span>
-                                    </p>
+                                    <div class="d-flex flex-column">
+                                        <span class="font-weight-bolder">
+                                            Daily: {{ number_format($newWorkers['daily']) }}
+                                        </span>
+                                        <span class="font-weight-bolder">
+                                            Weekly: {{ number_format($newWorkers['weekly']) }}
+                                        </span>
+                                        <span class="font-weight-bolder">
+                                            Monthly: {{ number_format($newWorkers['monthly']) }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-4 text-end">

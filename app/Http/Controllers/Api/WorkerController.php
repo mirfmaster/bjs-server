@@ -29,19 +29,19 @@ class WorkerController extends Controller
             ->whereDate('created_at', Carbon::today())
             ->count();
 
+        $now = Carbon::now();
         $weeklyNewWorkers = Worker::query()
             ->where('code', 'bjs:indofoll-job')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
             ->whereBetween('created_at', [
                 Carbon::now()->startOfWeek(),
                 Carbon::now()->endOfWeek(),
             ])
             ->count();
 
-        $now = Carbon::now();
         $monthlyNewWorkers = Worker::query()
             ->where('code', 'bjs:indofoll-job')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
             ->whereBetween('created_at', [
                 Carbon::now()->startOfMonth(),
                 Carbon::now()->endOfMonth(),

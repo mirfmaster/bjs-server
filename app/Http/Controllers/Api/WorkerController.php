@@ -37,8 +37,11 @@ class WorkerController extends Controller
             ])
             ->count();
 
+        $now = Carbon::now();
         $monthlyNewWorkers = Worker::query()
             ->where('code', 'bjs:indofoll-job')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
             ->whereBetween('created_at', [
                 Carbon::now()->startOfMonth(),
                 Carbon::now()->endOfMonth(),

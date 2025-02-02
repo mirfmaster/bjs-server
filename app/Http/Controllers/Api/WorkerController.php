@@ -24,27 +24,24 @@ class WorkerController extends Controller
 
         $workerCounters = Worker::query()->count();
 
-        // Daily new workers (today)
         $dailyNewWorkers = Worker::query()
             ->where('code', 'bjs:indofoll-job')
             ->whereDate('created_at', Carbon::today())
             ->count();
 
-        // Weekly new workers (last 7 days)
         $weeklyNewWorkers = Worker::query()
             ->where('code', 'bjs:indofoll-job')
             ->whereBetween('created_at', [
-                Carbon::now()->subDays(7)->startOfDay(),
-                Carbon::now()->endOfDay(),
+                Carbon::now()->startOfWeek(),
+                Carbon::now()->endOfWeek(),
             ])
             ->count();
 
-        // Monthly new workers (last 30 days)
         $monthlyNewWorkers = Worker::query()
             ->where('code', 'bjs:indofoll-job')
             ->whereBetween('created_at', [
-                Carbon::now()->subDays(30)->startOfDay(),
-                Carbon::now()->endOfDay(),
+                Carbon::now()->startOfMonth(),
+                Carbon::now()->endOfMonth(),
             ])
             ->count();
 
@@ -135,7 +132,7 @@ class WorkerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update worker status: ' . $e->getMessage(),
+                'message' => 'Failed to update worker status: '.$e->getMessage(),
             ], 500);
         }
     }

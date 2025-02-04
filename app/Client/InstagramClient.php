@@ -2,6 +2,7 @@
 
 namespace App\Client;
 
+use App\Exceptions\RateLimitException;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Config;
@@ -20,6 +21,7 @@ class InstagramClient
         'proxy rotation needed',
         'please wait a few minutes',
         'rate limited',
+        'unknown error',
     ];
 
     private ProxyManager $proxyManager;
@@ -30,7 +32,7 @@ class InstagramClient
 
     public function __construct()
     {
-        $this->proxyManager = new ProxyManager();
+        $this->proxyManager = new ProxyManager;
         $this->preferredProxyType = Config::get('app.preferred_proxy');
     }
 
@@ -41,6 +43,9 @@ class InstagramClient
         while ($attempt <= $maxRetries) {
             try {
                 $this->ensureProxyAvailable();
+                if (config('app.debug')) {
+                    dump("Using proxy {$this->currentProxy['type']}: {$this->currentProxy['label']}");
+                }
                 $response = $this->makeProfileRequest($username);
 
                 return $this->processProfileResponse($response, $username);
@@ -81,6 +86,13 @@ class InstagramClient
         return $proxy;
     }
 
+    public function forceRandomProxy(): void
+    {
+        // Force a proxy rotation regardless of current state
+        $this->currentProxy = null;
+        $this->getNextProxy();
+    }
+
     private function makeProfileRequest(string $username)
     {
         return Http::withHeaders([
@@ -99,43 +111,93 @@ class InstagramClient
 
     private function processProfileResponse($response, string $username)
     {
-        if ($response->status() === 404) {
+        $body = $response->json();
+
+        // First check if the response is successful
+        if (! $response->successful()) {
+            if ($response->status() === 404) {
+                return (object) ['username' => $username, 'found' => false];
+            }
+            throw new \Exception('Failed to fetch profile: ' . $response->body());
+        }
+
+        // Then check for rate limit or error responses
+        if (isset($body['status']) && $body['status'] === 'fail') {
+            throw new RateLimitException($body['message'] ?? 'Unknown error');
+        }
+
+        // Check data structure and handle null user case
+        if (
+            ! isset($body['data']) ||
+            ! isset($body['data']['user']) ||
+            $body['data']['user'] === null
+        ) {
             return (object) ['username' => $username, 'found' => false];
         }
 
-        if ($response->successful() && ! empty($response['data']['user'])) {
-            $user = $response['data']['user'];
+        // Process valid user data
+        $user = $body['data']['user'];
 
-            return (object) [
-                'username' => $username,
-                'found' => true,
-                'pk' => $user['id'],
-                'is_private' => $user['is_private'],
-                'has_anonymous_profile_picture' => strpos($user['profile_pic_url'], '2446069589734326272') !== false,
-                'total_media_timeline' => intval($user['edge_owner_to_timeline_media']['count']),
-                'follower_count' => $user['edge_followed_by']['count'],
-                'following_count' => $user['edge_follow']['count'],
-            ];
+        return (object) [
+            'username' => $username,
+            'found' => true,
+            'pk' => $user['id'],
+            'is_private' => $user['is_private'],
+            'has_anonymous_profile_picture' => strpos($user['profile_pic_url'], '2446069589734326272') !== false,
+            'total_media_timeline' => intval($user['edge_owner_to_timeline_media']['count']),
+            'follower_count' => $user['edge_followed_by']['count'],
+            'following_count' => $user['edge_follow']['count'],
+        ];
+    }
+
+    private function shouldRotateProxy(\Exception $e): bool
+    {
+        // Check for our custom rate limit exception first
+        if ($e instanceof RateLimitException) {
+            return true;
         }
 
-        throw new \Exception('Failed to fetch profile: '.$response->body());
+        // For general connection exceptions
+        if ($e instanceof ConnectionException || $e instanceof RequestException) {
+            $message = strtolower($e->getMessage());
+            foreach (self::$proxyRotationErrors as $errorPhrase) {
+                if (str_contains($message, strtolower($errorPhrase))) {
+                    return true;
+                }
+            }
+        }
+
+        // Check for rate limit indicators in the full error message
+        $fullMessage = strtolower($e->getMessage());
+        if (
+            str_contains($fullMessage, 'please wait a few minutes') ||
+            str_contains($fullMessage, 'require_login') ||
+            str_contains($fullMessage, 'status":"fail"')
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
     private function handleRequestError(\Exception $e, int $attempt, int $maxRetries): bool
     {
+        $shouldRotate = $this->shouldRotateProxy($e);
+
         Log::warning('Instagram request failed', [
             'attempt' => $attempt,
             'error' => $e->getMessage(),
             'proxy_type' => $this->currentProxy ? $this->currentProxy['type'] : null,
             'proxy_label' => $this->currentProxy ? $this->currentProxy['label'] : null,
             'preferred_type' => $this->preferredProxyType,
+            'should_rotate' => $shouldRotate,
         ]);
 
         if ($attempt === $maxRetries) {
             return false;
         }
 
-        if ($this->shouldRotateProxy($e)) {
+        if ($shouldRotate) {
             $this->rotateProxy();
         }
 
@@ -157,21 +219,5 @@ class InstagramClient
         }
 
         $this->currentProxy = $this->getNextProxy();
-    }
-
-    private function shouldRotateProxy(\Exception $e): bool
-    {
-        if (! ($e instanceof ConnectionException || $e instanceof RequestException)) {
-            return false;
-        }
-
-        $message = strtolower($e->getMessage());
-        foreach (self::$proxyRotationErrors as $errorPhrase) {
-            if (str_contains($message, strtolower($errorPhrase))) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

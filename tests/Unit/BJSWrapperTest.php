@@ -20,10 +20,10 @@ class BJSWrapperTest extends TestCase
         parent::setUp();
 
         // Create real instances
-        $bjsClient = new BJSClient;
+        $bjsClient = new BJSClient();
         $bjsService = new BJSService($bjsClient);
-        $orderService = new OrderService(new \App\Models\Order, new Redis);
-        $utilClient = new UtilClient;
+        $orderService = new OrderService(new \App\Models\Order(), new Redis());
+        $utilClient = new UtilClient();
 
         $this->wrapper = new BJSWrapper(
             $bjsService,
@@ -103,11 +103,10 @@ class BJSWrapperTest extends TestCase
         $orders = $this->wrapper->bjsService->getOrdersData(164, 4);
         $orders = $orders->sortBy('created');
 
-        // __AUTO_GENERATED_PRINTF_START__
-        dump('Debugging: BJSWrapperTest#test_fetch_proxy 1'); // __AUTO_GENERATED_PRINTF_END__
-        foreach ($orders as $order) {
-            // __AUTO_GENERATED_PRINTF_START__
-            dump('Debugging: BJSWrapperTest#test_fetch_proxy 2'); // __AUTO_GENERATED_PRINTF_END__
+        foreach ($orders as $idx => $order) {
+            if ($idx == 5) {
+                break;
+            }
             try {
                 $username = $this->wrapper->bjsService->extractIdentifier($order->link);
                 if ($username == '') {
@@ -115,14 +114,11 @@ class BJSWrapperTest extends TestCase
                 }
 
                 try {
-                    $client = new InstagramClient;
-                    // __AUTO_GENERATED_PRINT_VAR_START__
-                    dump('Variable: BJSWrapperTest#test_fetch_proxy $username: "\n"', $username); // __AUTO_GENERATED_PRINT_VAR_END__
+                    $client = new InstagramClient();
                     $info = $client->fetchProfile($username);
-                    dd($info);
-                } catch (\Exception $e) {
                     // __AUTO_GENERATED_PRINT_VAR_START__
-                    dump('Variable: BJSWrapperTest#test_fetch_proxy $e: "\n"', $e); // __AUTO_GENERATED_PRINT_VAR_END__
+                    dump('Variable: BJSWrapperTest#test_fetch_proxy $info: "\n"', $info); // __AUTO_GENERATED_PRINT_VAR_END__
+                } catch (\Exception $e) {
                 }
 
                 // if (! $info->found) {
@@ -154,11 +150,7 @@ class BJSWrapperTest extends TestCase
                 //     'status_bjs' => 'inprogress',
                 //     'source' => 'bjs',
                 // ];
-                // __AUTO_GENERATED_PRINTF_START__
-                dump('Debugging: BJSWrapperTest#test_fetch_proxy 1'); // __AUTO_GENERATED_PRINTF_END__
             } catch (\Throwable $th) {
-                // __AUTO_GENERATED_PRINT_VAR_START__
-                dump('Variable: BJSWrapperTest#test_fetch_proxy $th: "\n"', $th); // __AUTO_GENERATED_PRINT_VAR_END__
 
                 continue;
             }

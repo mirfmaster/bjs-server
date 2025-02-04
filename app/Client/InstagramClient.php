@@ -11,14 +11,15 @@ use Illuminate\Support\Facades\Log;
 class InstagramClient
 {
     private static array $proxyRotationErrors = [
-        'Connection timeout',
-        'Connection reset by peer',
-        'Proxy CONNECT aborted',
-        'Failed to connect',
-        'Operation timed out',
+        // NOTE: SHOULD BE LOWERCASE
+        'connection timeout',
+        'connection reset by peer',
+        'proxy connect aborted',
+        'failed to connect',
+        'operation timed out',
         'proxy rotation needed',
-        'Please wait a few minutes',
-        'Rate limited',
+        'please wait a few minutes',
+        'rate limited',
     ];
 
     private ProxyManager $proxyManager;
@@ -29,7 +30,7 @@ class InstagramClient
 
     public function __construct()
     {
-        $this->proxyManager = new ProxyManager;
+        $this->proxyManager = new ProxyManager();
         $this->preferredProxyType = Config::get('app.preferred_proxy');
     }
 
@@ -152,6 +153,7 @@ class InstagramClient
                 $this->currentProxy['label'],
                 $this->currentProxy['type']
             );
+            sleep(3);
         }
 
         $this->currentProxy = $this->getNextProxy();
@@ -165,7 +167,7 @@ class InstagramClient
 
         $message = strtolower($e->getMessage());
         foreach (self::$proxyRotationErrors as $errorPhrase) {
-            if (stripos($message, strtolower($errorPhrase)) !== false) {
+            if (str_contains($message, strtolower($errorPhrase))) {
                 return true;
             }
         }

@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Client\BJSClient;
 use App\Client\InstagramClient;
+use App\Client\ProxyManager;
 use App\Client\UtilClient;
 use App\Services\BJSService;
 use App\Services\OrderService;
@@ -20,15 +21,18 @@ class BJSWrapperTest extends TestCase
         parent::setUp();
 
         // Create real instances
-        $bjsClient = new BJSClient();
+        $bjsClient = new BJSClient;
         $bjsService = new BJSService($bjsClient);
-        $orderService = new OrderService(new \App\Models\Order(), new Redis());
-        $utilClient = new UtilClient();
+        $orderService = new OrderService(new \App\Models\Order, new Redis);
+        $utilClient = new UtilClient;
 
+        $proxyManager = new ProxyManager;
+        $igCli = new InstagramClient($proxyManager);
         $this->wrapper = new BJSWrapper(
             $bjsService,
             $orderService,
-            $utilClient
+            $utilClient,
+            $igCli
         );
     }
 
@@ -114,7 +118,7 @@ class BJSWrapperTest extends TestCase
                 }
 
                 try {
-                    $client = new InstagramClient();
+                    $client = new InstagramClient;
                     $info = $client->fetchProfile($username);
                     // __AUTO_GENERATED_PRINT_VAR_START__
                     dump('Variable: BJSWrapperTest#test_fetch_proxy $info: "\n"', $info); // __AUTO_GENERATED_PRINT_VAR_END__

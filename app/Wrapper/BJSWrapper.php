@@ -3,6 +3,7 @@
 namespace App\Wrapper;
 
 use App\Client\BJSClient;
+use App\Client\InstagramClient;
 use App\Client\UtilClient;
 use App\Consts\OrderConst;
 use App\Models\Order;
@@ -26,9 +27,10 @@ class BJSWrapper
         public BJSService $bjsService,
         public OrderService $order,
         public UtilClient $util,
+        public InstagramClient $igCli,
     ) {
         $this->bjsCli = $bjsService->bjs;
-        $this->orderV2 = new OrderServiceV2(new Order());
+        $this->orderV2 = new OrderServiceV2(new Order);
     }
 
     // NOTE: its better to sync orders from BJS to server, instead server to BJS
@@ -197,7 +199,7 @@ class BJSWrapper
                         continue;
                     }
 
-                    $info = $this->util->__IGGetInfo($username);
+                    $info = $this->igCli->fetchProfile($username);
                     Log::debug('ingfonya', ['info' => $info]);
 
                     if (! $info->found) {
@@ -955,7 +957,7 @@ class BJSWrapper
                 $this->order->setStatusRedis($tokoStatus);
                 $order->update([
                     'status' => $tokoStatus,
-                    'status_bjs' => $tokoStatus
+                    'status_bjs' => $tokoStatus,
                 ]);
             }
 

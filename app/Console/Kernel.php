@@ -6,6 +6,8 @@ use App\Jobs\GetUserIndofoll;
 use App\Jobs\SyncBJSOrders;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class Kernel extends ConsoleKernel
 {
@@ -14,8 +16,17 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->job(new GetUserIndofoll)->daily();
-        $schedule->job(new SyncBJSOrders)->everyThreeMinutes()->withoutOverlapping();
+        $schedule->job(new GetUserIndofoll())->daily();
+
+        $schedule->job(new SyncBJSOrders())
+            ->everyThreeMinutes()
+            ->withoutOverlapping()
+            ->when(function () {
+                Log::warning('Global work is false, skipping job');
+
+                return (bool) Redis::get('system:global-work');
+            });
+
         $schedule->command('redispo:move-users')->everySixHours()->appendOutputTo(storage_path('logs/scheduler.log'));
     }
 
@@ -24,7 +35,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__ . '/Commands');
+        $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
     }

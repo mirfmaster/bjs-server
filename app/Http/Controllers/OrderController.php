@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Client\BJSClient;
+use App\Client\InstagramClient;
 use App\Models\Order;
 use App\Services\BJSService;
 use App\Services\OrderService;
@@ -136,13 +137,17 @@ class OrderController extends Controller
         $order->margin_request = $marginRequest;
 
         $bjsService = new BJSService(new BJSClient());
+        $igCli = new InstagramClient();
         $identifier = $bjsService->extractIdentifier($target);
 
         if ($type == 'follow') {
             try {
                 // TODO: handle full URL
-                $data = $this->getUserData($identifier);
-                $order->username = $data['username'];
+                $data = $igCli->fetchProfile($identifier);
+                if (! $data->found) {
+                    return back()->with('error', 'Target is not found');
+                }
+                $order->username = $data->username;
             } catch (\Exception $e) {
                 return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
             }

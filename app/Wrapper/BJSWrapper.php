@@ -251,6 +251,7 @@ class BJSWrapper
                     ];
                     $this->order->createAndUpdateCache($data);
                     $totalFollowOrder += $requested;
+                    sleep(2);
                     Log::info('Order fetch info success, processing next...');
                 } catch (\Throwable $th) {
                     $this->logError($th, $ctx);

@@ -22,7 +22,7 @@ class CheckUsernameChanges extends Command
 
     private const PROCESS_DELAY = 2; // seconds
 
-    private const MAX_BATCH_SIZE = 100; // Maximum number of records to process in one batch
+    private const MAX_BATCH_SIZE = 50; // Maximum number of records to process in one batch
 
     public function __construct(InstagramClient $igClient)
     {
@@ -59,6 +59,7 @@ class CheckUsernameChanges extends Command
                         $this->processWorker($worker);
                         $processedCount++;
                         $bar->advance();
+                        sleep(1);
                     }
 
                     // Break if we've processed all workers or if no more workers are found

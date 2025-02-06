@@ -22,6 +22,8 @@ class CheckUsernameChanges extends Command
 
     private const PROCESS_DELAY = 2; // seconds
 
+    private const MAX_BATCH_SIZE = 100; // Maximum number of records to process in one batch
+
     public function __construct(InstagramClient $igClient)
     {
         parent::__construct();
@@ -30,40 +32,68 @@ class CheckUsernameChanges extends Command
 
     public function handle()
     {
-        $query = Worker::query()->where('status', 'possibly_change_username');
-
-        // Apply batch limit unless --no-limit flag is used
-        if (! $this->option('no-limit')) {
-            $batchSize = $this->option('batch');
-            $query->limit($batchSize);
-            $this->info("Starting username verification process with batch size: {$batchSize}");
-        } else {
-            $this->info('Starting username verification process for all matching workers');
-        }
-
         try {
-            $totalWorkers = $query->count();
-            $workers = $query->get();
+            $totalCount = Worker::where('status', 'possibly_change_username')->count();
 
-            if ($workers->isEmpty()) {
+            if ($totalCount === 0) {
                 $this->info('No workers found with possibly_change_username status');
 
                 return Command::SUCCESS;
             }
 
-            $this->info("Found {$totalWorkers} workers to process");
-            $bar = $this->output->createProgressBar($workers->count());
-            $bar->start();
+            $this->info("Found {$totalCount} total workers to process");
 
-            foreach ($workers as $worker) {
-                $this->processWorker($worker);
-                sleep(self::PROCESS_DELAY);
-                $bar->advance();
+            if ($this->option('no-limit')) {
+                $processedCount = 0;
+                $bar = $this->output->createProgressBar($totalCount);
+                $bar->start();
+
+                do {
+                    $workers = Worker::query()
+                        ->where('status', 'possibly_change_username')
+                        ->inRandomOrder()
+                        ->limit(self::MAX_BATCH_SIZE)
+                        ->get();
+
+                    foreach ($workers as $worker) {
+                        $this->processWorker($worker);
+                        $processedCount++;
+                        $bar->advance();
+                    }
+
+                    // Break if we've processed all workers or if no more workers are found
+                    if ($processedCount >= $totalCount || $workers->isEmpty()) {
+                        break;
+                    }
+
+                } while (true);
+
+                $bar->finish();
+                $this->newLine();
+                $this->info("Username verification process completed, processed: $processedCount");
+            } else {
+                // Process single batch
+                $batchSize = $this->option('batch');
+                $this->info("Starting username verification process with batch size: {$batchSize}");
+
+                $workers = Worker::query()
+                    ->where('status', 'possibly_change_username')
+                    ->inRandomOrder()
+                    ->limit($batchSize)
+                    ->get();
+
+                $bar = $this->output->createProgressBar($workers->count());
+                $bar->start();
+
+                foreach ($workers as $worker) {
+                    $this->processWorker($worker);
+                    $bar->advance();
+                }
+
+                $bar->finish();
+                $this->newLine();
+                $this->info("Username verification process completed, processed: {$workers->count()}");
             }
-
-            $bar->finish();
-            $this->newLine();
-            $this->info("Username verification process completed, processed: $totalWorkers");
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
@@ -76,6 +106,9 @@ class CheckUsernameChanges extends Command
 
     private function processWorker($worker): void
     {
+        // Clean username (remove @ if present)
+        $worker->username = ltrim($worker->username, '@');
+
         $context = [
             'worker_id' => $worker->id,
             'username' => $worker->username,

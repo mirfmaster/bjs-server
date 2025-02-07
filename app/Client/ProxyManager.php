@@ -22,12 +22,15 @@ class ProxyManager
 
     private string $pyProxyPassword;
 
-    public function __construct()
+    private ?string $forceProxyType;
+
+    public function __construct(?string $forceProxyType = null)
     {
         $this->managedProxyUrl = config('app.proxy_url');
         $this->managedProxyApiKey = config('app.proxy_api_key');
         $this->pyProxyUsername = config('app.pyproxy_username');
         $this->pyProxyPassword = config('app.pyproxy_password');
+        $this->forceProxyType = $forceProxyType;
     }
 
     /**
@@ -35,6 +38,10 @@ class ProxyManager
      */
     public function getManagedProxy(string $label): ?array
     {
+        if ($this->forceProxyType === self::PYPROXY) {
+            return null;
+        }
+
         try {
             $response = Http::get($this->buildUrl('/api/get-by-label-proxy'), [
                 'proxy_label' => $label,
@@ -64,8 +71,12 @@ class ProxyManager
     /**
      * Get a specific PyProxy with a custom session ID
      */
-    public function getPyProxy(?string $sessionId = null): array
+    public function getPyProxy(?string $sessionId = null): ?array
     {
+        if ($this->forceProxyType === self::MANAGEDPROXY) {
+            return null;
+        }
+
         return [
             'type' => self::PYPROXY,
             'label' => $sessionId,
@@ -78,11 +89,14 @@ class ProxyManager
      */
     public function getAvailableProxy(?string $preferredType = null): ?array
     {
-        if ($preferredType === self::PYPROXY) {
+        // If force proxy type is set, it overrides the preferred type
+        $effectiveType = $this->forceProxyType ?? $preferredType;
+
+        if ($effectiveType === self::PYPROXY) {
             return $this->getPyProxy();
         }
 
-        if ($preferredType === self::MANAGEDPROXY) {
+        if ($effectiveType === self::MANAGEDPROXY) {
             $managedProxies = $this->getActiveProxies();
             if ($managedProxies->isNotEmpty()) {
                 $proxy = $managedProxies->random();
@@ -93,11 +107,13 @@ class ProxyManager
                     'connection_string' => $this->formatProxyString($proxy),
                 ];
             }
-
-            return null;
+            // If force proxy type is managed, return null instead of falling back
+            if ($this->forceProxyType === self::MANAGEDPROXY) {
+                return null;
+            }
         }
 
-        // No preference - try managed first, then fallback to PyProxy
+        // No force type or preference - try managed first, then fallback to PyProxy
         $managedProxies = $this->getActiveProxies();
         if ($managedProxies->isNotEmpty()) {
             $proxy = $managedProxies->random();
@@ -114,6 +130,11 @@ class ProxyManager
 
     public function rotateProxy(?string $label, string $type = self::MANAGEDPROXY): bool
     {
+        // Don't allow rotation if it conflicts with forced proxy type
+        if ($this->forceProxyType && $type !== $this->forceProxyType) {
+            return false;
+        }
+
         if ($type === self::MANAGEDPROXY && $label) {
             return $this->rotateIp($label);
         }
@@ -127,6 +148,10 @@ class ProxyManager
 
     public function getActiveProxies(): Collection
     {
+        if ($this->forceProxyType === self::PYPROXY) {
+            return collect([]);
+        }
+
         try {
             $response = Http::get($this->buildUrl('/api/get-all-proxy'));
 

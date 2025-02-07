@@ -30,10 +30,10 @@ class InstagramClient
 
     private string $preferredProxyType;
 
-    public function __construct()
+    public function __construct(?string $forceProxyType = null)
     {
-        $this->proxyManager = new ProxyManager;
-        $this->preferredProxyType = Config::get('app.preferred_proxy');
+        $this->proxyManager = new ProxyManager($forceProxyType);
+        $this->preferredProxyType = $forceProxyType ?? Config::get('app.preferred_proxy');
     }
 
     public function fetchProfile(string $username, int $maxRetries = 4)
@@ -73,14 +73,13 @@ class InstagramClient
 
     private function getNextProxy(): ?array
     {
-        // Try preferred proxy type first
+        // When using forced proxy type, only try that type
         $proxy = $this->proxyManager->getAvailableProxy($this->preferredProxyType);
 
-        if (! $proxy) {
-            // Try fallback proxy type
-            $fallbackType = ProxyManager::PYPROXY;
-
-            $proxy = $this->proxyManager->getAvailableProxy($fallbackType);
+        if (! $proxy && $this->preferredProxyType !== ProxyManager::PYPROXY) {
+            // Only try fallback if proxy type isn't forced
+            Log::info('Primary proxy unavailable, trying PyProxy fallback');
+            $proxy = $this->proxyManager->getAvailableProxy(ProxyManager::PYPROXY);
         }
 
         return $proxy;
@@ -88,7 +87,6 @@ class InstagramClient
 
     public function forceRandomProxy(): void
     {
-        // Force a proxy rotation regardless of current state
         $this->currentProxy = null;
         $this->getNextProxy();
     }
@@ -113,20 +111,17 @@ class InstagramClient
     {
         $body = $response->json();
 
-        // First check if the response is successful
         if (! $response->successful()) {
             if ($response->status() === 404) {
                 return (object) ['username' => $username, 'found' => false];
             }
-            throw new \Exception('Failed to fetch profile: ' . $response->body());
+            throw new \Exception('Failed to fetch profile: '.$response->body());
         }
 
-        // Then check for rate limit or error responses
         if (isset($body['status']) && $body['status'] === 'fail') {
             throw new RateLimitException($body['message'] ?? 'Unknown error');
         }
 
-        // Check data structure and handle null user case
         if (
             ! isset($body['data']) ||
             ! isset($body['data']['user']) ||
@@ -135,7 +130,6 @@ class InstagramClient
             return (object) ['username' => $username, 'found' => false];
         }
 
-        // Process valid user data
         $user = $body['data']['user'];
 
         return (object) [
@@ -152,12 +146,10 @@ class InstagramClient
 
     private function shouldRotateProxy(\Exception $e): bool
     {
-        // Check for our custom rate limit exception first
         if ($e instanceof RateLimitException) {
             return true;
         }
 
-        // For general connection exceptions
         if ($e instanceof ConnectionException || $e instanceof RequestException) {
             $message = strtolower($e->getMessage());
             foreach (self::$proxyRotationErrors as $errorPhrase) {
@@ -167,7 +159,6 @@ class InstagramClient
             }
         }
 
-        // Check for rate limit indicators in the full error message
         $fullMessage = strtolower($e->getMessage());
         if (
             str_contains($fullMessage, 'please wait a few minutes') ||

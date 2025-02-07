@@ -24,14 +24,15 @@ class CheckUsernameChanges extends Command
 
     private const MAX_BATCH_SIZE = 50; // Maximum number of records to process in one batch
 
-    public function __construct(InstagramClient $igClient)
+    public function __construct()
     {
         parent::__construct();
-        $this->igClient = $igClient;
     }
 
     public function handle()
     {
+        $this->igClient = new InstagramClient('managed');
+
         try {
             $totalCount = Worker::where('status', 'possibly_change_username')->count();
 
@@ -67,6 +68,7 @@ class CheckUsernameChanges extends Command
                         break;
                     }
 
+                    sleep(rand(15, 60));
                 } while (true);
 
                 $bar->finish();

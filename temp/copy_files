@@ -30,7 +30,6 @@ resources/views/layouts/app.blade.php
 resources/views/pages/dashboard.blade.php
 resources/views/pages/devices.blade.php
 resources/views/pages/orders.blade.php
-resources/views/pages/tables.blade.php
 resources/views/pages/workers.blade.php
 
 routes/api.php

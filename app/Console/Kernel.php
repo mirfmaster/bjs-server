@@ -16,9 +16,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->job(new GetUserIndofoll())->daily();
+        $schedule->job(new GetUserIndofoll)->daily();
 
-        $schedule->job(new SyncBJSOrders())
+        $schedule->job(new SyncBJSOrders)
             ->everyThreeMinutes()
             ->withoutOverlapping()
             ->when(function () {
@@ -28,6 +28,16 @@ class Kernel extends ConsoleKernel
             });
 
         $schedule->command('redispo:move-users')->everySixHours()->appendOutputTo(storage_path('logs/scheduler.log'));
+
+        // Delete hold state for 'like' every 15 minutes
+        $schedule->command('redispo:delete-hold-state like')
+            ->everyFifteenMinutes()
+            ->appendOutputTo(storage_path('logs/scheduler.log'));
+
+        // Delete hold state for 'follow' every 30 minutes
+        $schedule->command('redispo:delete-hold-state follow')
+            ->everyThirtyMinutes()
+            ->appendOutputTo(storage_path('logs/scheduler.log'));
     }
 
     /**
@@ -35,7 +45,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

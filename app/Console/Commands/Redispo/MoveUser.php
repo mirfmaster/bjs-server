@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Redispo;
 
 use App\Traits\LoggerTrait;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
-class MoveUserRedispo extends Command
+class MoveUser extends Command
 {
     use LoggerTrait;
 

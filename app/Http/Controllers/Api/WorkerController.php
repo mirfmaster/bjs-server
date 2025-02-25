@@ -7,8 +7,11 @@ use App\Models\Worker;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class WorkerController extends Controller
 {
@@ -136,6 +139,75 @@ class WorkerController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update worker status: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function import(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'csv_file' => 'required|file|mimes:csv,txt|max:10240', // 10MB max
+            'delimiter' => 'sometimes|string', // Common delimiters
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            // Store the uploaded file
+            $file = $request->file('csv_file');
+            $filename = 'workers_'.date('Y_m_d_His').'.csv';
+            $path = $file->storeAs('assets/prod', $filename);
+
+            if (! $path) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to store the uploaded file.',
+                ], 500);
+            }
+
+            // Get delimiter from request or default to pipe
+            $delimiter = $request->input('delimiter', '|');
+
+            // Run the import command
+            $exitCode = Artisan::call('workers:import', [
+                'file' => storage_path('app/'.$path),
+                '--delimiter' => $delimiter,
+            ]);
+
+            // Get command output
+            $output = Artisan::output();
+
+            if ($exitCode === 0) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Workers imported successfully',
+                    'details' => $output,
+                ]);
+            }
+
+            // Clean up the file if import failed
+            Storage::delete($path);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Import failed',
+                'details' => $output,
+            ], 500);
+        } catch (\Exception $e) {
+            // Clean up file if exists
+            if (isset($path)) {
+                Storage::delete($path);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing file',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

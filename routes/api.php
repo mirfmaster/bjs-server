@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::prefix('worker')->group(function () {
     Route::get('/info', [WorkerController::class, 'getInfo']);
     Route::get('/update-status', [WorkerController::class, 'updateStatus']);
+    Route::post('/import', [WorkerController::class, 'import']);
 });
 Route::prefix('order')->group(function () {
     Route::get('/info', [OrderController::class, 'getInfo']);

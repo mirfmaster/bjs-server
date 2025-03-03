@@ -27,16 +27,16 @@ class Kernel extends ConsoleKernel
                 return (bool) Redis::get('system:global-work');
             });
 
-        $schedule->command('redispo:move-users')->everySixHours()->appendOutputTo(storage_path('logs/scheduler.log'));
+        $schedule->command('redispo:move-users')->daily()->appendOutputTo(storage_path('logs/scheduler.log'));
 
-        // Delete hold state for 'like' every 15 minutes
+        // Delete hold state for 'like' every 45 minutes
         $schedule->command('redispo:delete-hold-state like')
-            ->everyFifteenMinutes()
+            ->cron('*/45 * * * *')
             ->appendOutputTo(storage_path('logs/scheduler.log'));
 
-        // Delete hold state for 'follow' every 30 minutes
+        // Delete hold state for 'follow' every hour
         $schedule->command('redispo:delete-hold-state follow')
-            ->everyThirtyMinutes()
+            ->hourly()
             ->appendOutputTo(storage_path('logs/scheduler.log'));
     }
 
@@ -45,7 +45,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__ . '/Commands');
+        $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
     }

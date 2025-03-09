@@ -7,12 +7,14 @@ use App\Client\InstagramClient;
 use App\Client\UtilClient;
 use App\Consts\OrderConst;
 use App\Models\Order;
+use App\Notifications\TelegramNotification;
 use App\Services\BJSService;
 use App\Services\OrderService;
 use App\Services\OrderServiceV2;
 use App\Traits\LoggerTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Redis;
 
 class BJSWrapper
@@ -963,6 +965,111 @@ class BJSWrapper
             }
 
             Log::info('======================' . PHP_EOL . PHP_EOL);
+        }
+    }
+
+    /**
+     * Fetch TikTok orders and send them through Telegram notification
+     *
+     * @param array $watchlists Service IDs to watch
+     * @return int Number of orders found
+     */
+    public function fetchTiktokOrder($watchlists)
+    {
+        Log::info('======================');
+
+        $context = ['process' => 'fetch-tiktok'];
+        Log::info('Fetching order', $context);
+
+        $allOrders = collect(); // Collect all orders across watchlists
+
+        foreach ($watchlists as $id) {
+            $context['processID'] = $id;
+
+            Log::info('Getting orders with status pending', $context);
+            $orders = $this->bjsService->getOrdersData($id, 0);
+            $orders = $orders->sortBy('created');
+
+            $allOrders = $allOrders->merge($orders);
+        }
+
+        Log::info('Processing orders: ' . count($allOrders), $context);
+
+        if ($allOrders->isEmpty()) {
+            Log::info('No pending orders found');
+            return 0;
+        }
+
+        // Chunk orders into groups of 5 for Telegram notifications
+        $orderChunks = $allOrders->chunk(5);
+
+        $chatId = config('services.telegram.chat_id');
+        foreach ($orderChunks as $index => $chunk) {
+            $messages = ["<b>📋 Pending TikTok Orders</b>\n"];
+
+            foreach ($chunk as $order) {
+                // Format created timestamp (DD/MM HH:mm)
+                $formattedCreated = $order->created
+                    ? \Carbon\Carbon::parse($order->created)->format('d/m H:i')
+                    : 'N/A';
+
+                // Properly create copyable text using Telegram's HTML format
+                $orderMessage = sprintf(
+                    "ID: %s\n" .
+                        "Request: %s for %s\n" .
+                        "Created: %s %s\n" .
+                        "Quick Start: <code>/start %s 0</code>\n" .
+                        "-------------------\n",
+                    $order->id,
+                    number_format($order->count),
+                    $order->link,
+                    $order->user,
+                    $formattedCreated,
+                    $order->id
+                );
+
+                $messages[] = $orderMessage;
+            }
+
+            // Add pagination info
+            $messages[] = sprintf(
+                "\n📋 <b>Page %d/%d | Total Orders: %d</b>",
+                $index + 1,
+                $orderChunks->count(),
+                $allOrders->count()
+            );
+
+            // Send Telegram notification with HTML parse mode for proper code formatting
+            $this->sendTelegramNotification($messages, $chatId);
+
+            // Add a small delay between sending multiple notifications
+            if ($index < $orderChunks->count() - 1) {
+                usleep(500000); // 0.5 seconds
+            }
+        }
+
+        return $allOrders->count();
+    }
+
+    /**
+     * Send notification to Telegram using HTML parse mode
+     *
+     * @param array $messages
+     * @param string $chatId
+     * @return void
+     */
+    private function sendTelegramNotification(array $messages, string $chatId)
+    {
+        try {
+            Notification::sendNow(
+                [$chatId],
+                (new TelegramNotification($messages))
+                    ->formatAs('HTML') // Use HTML parse mode instead of Markdown
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to send Telegram notification: ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
         }
     }
 }

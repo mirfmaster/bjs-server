@@ -10,16 +10,15 @@ class TelegramNotification extends Notification
 {
     use Queueable;
 
-    protected ?string $chatId;
+    private string $format = 'Markdown';
 
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct(public array $messages, ?string $chatId = null)
+    public function __construct(public array $messages, private ?string $chatId = null)
     {
-        $this->chatId = $chatId;
     }
 
     /**
@@ -33,19 +32,33 @@ class TelegramNotification extends Notification
         return ['telegram'];
     }
 
-    public function toTelegram($notifiable)
+    /**
+     * Set the format for this notification (Markdown or HTML)
+     *
+     * @return $this
+     */
+    public function formatAs(string $format)
     {
-        return $this->builtMessages();
+        $this->format = $format;
+
+        return $this;
     }
 
-    private function builtMessages()
+    /**
+     * Convert notification to Telegram format
+     *
+     * @param  mixed  $notifiable
+     * @return TelegramMessage
+     */
+    public function toTelegram($notifiable)
     {
-        // Use provided chat ID, fall back to notifiable's routeNotificationFor method,
-        // then fall back to config value
-        $groupChatId = $this->chatId ?? (is_string($notifiable = $this->getNotifiable()) ? $notifiable : config('services.telegram.chat_id'));
+        // Use provided chat ID, or notifiable value if string, or config value
+        $chatId = $this->chatId ??
+            (is_string($notifiable) ? $notifiable : config('services.telegram.chat_id'));
 
         $tele = TelegramMessage::create()
-            ->to($groupChatId);
+            ->to($chatId)
+            ->options(['parse_mode' => $this->format]);
 
         foreach ($this->messages as $idx => $m) {
             if (is_numeric($idx) || $idx === 'line') {
@@ -60,17 +73,5 @@ class TelegramNotification extends Notification
         }
 
         return $tele;
-    }
-
-    /**
-     * Get the notifiable entity
-     *
-     * @return mixed
-     */
-    private function getNotifiable()
-    {
-        return app('Illuminate\Notifications\ChannelManager')
-            ->deliversVia('telegram')
-            ->getNotifiable();
     }
 }

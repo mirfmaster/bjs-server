@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\Client\BJSClient;
 use App\Client\InstagramClient;
-use App\Client\ProxyManager;
 use App\Client\UtilClient;
 use App\Services\BJSService;
 use App\Services\OrderService;
@@ -21,13 +20,12 @@ class BJSWrapperTest extends TestCase
         parent::setUp();
 
         // Create real instances
-        $bjsClient = new BJSClient;
+        $bjsClient = new BJSClient();
         $bjsService = new BJSService($bjsClient);
-        $orderService = new OrderService(new \App\Models\Order, new Redis);
-        $utilClient = new UtilClient;
+        $orderService = new OrderService(new \App\Models\Order(), new Redis());
+        $utilClient = new UtilClient();
 
-        $proxyManager = new ProxyManager;
-        $igCli = new InstagramClient($proxyManager);
+        $igCli = new InstagramClient();
         $this->wrapper = new BJSWrapper(
             $bjsService,
             $orderService,
@@ -118,7 +116,7 @@ class BJSWrapperTest extends TestCase
                 }
 
                 try {
-                    $client = new InstagramClient;
+                    $client = new InstagramClient();
                     $info = $client->fetchProfile($username);
                     // __AUTO_GENERATED_PRINT_VAR_START__
                     dump('Variable: BJSWrapperTest#test_fetch_proxy $info: "\n"', $info); // __AUTO_GENERATED_PRINT_VAR_END__
@@ -277,6 +275,25 @@ class BJSWrapperTest extends TestCase
         //
         // // NOTE: completed case
         // $this->wrapper->bjsService->bjs->setRemains('4718465', 1);
+
+        // Test passes if no exceptions are thrown
+        $this->assertTrue(true);
+    }
+
+    /**
+     * To run this test:
+     * php artisan test --filter=BJSWrapperTest::test_fetch_tiktok_orders
+     */
+    public function test_fetch_tiktok_orders(): void
+    {
+        // $this->markTestSkipped('Remove this line to run the test.');
+
+        // Real service IDs for follow orders
+        $watchlists = [147];
+        $this->wrapper->bjsService->auth();
+
+        // Execute the actual fetch
+        $this->wrapper->fetchTiktokOrder($watchlists);
 
         // Test passes if no exceptions are thrown
         $this->assertTrue(true);

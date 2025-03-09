@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\TelegramWebhookController;
 use App\Http\Controllers\Api\WorkerController;
 use App\Http\Controllers\OrderController;
 use Illuminate\Http\Request;
@@ -27,4 +28,7 @@ Route::prefix('worker')->group(function () {
 });
 Route::prefix('order')->group(function () {
     Route::get('/info', [OrderController::class, 'getInfo']);
+});
+Route::prefix('telegram')->group(function () {
+    Route::get('/webhook-tiktok', [TelegramWebhookController::class, 'handleWebhook']);
 });

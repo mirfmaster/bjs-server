@@ -1015,7 +1015,7 @@ class BJSWrapper
 
                 // Properly create copyable text using Telegram's HTML format
                 $orderMessage = sprintf(
-                    "ID: %s\n" .
+                    "ID: <code>%s</code>\n" .
                         "Request: %s for %s\n" .
                         "Created: %s %s\n" .
                         "Quick Start: <code>/start %s 0</code>\n" .

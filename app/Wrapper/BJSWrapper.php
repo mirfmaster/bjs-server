@@ -12,6 +12,7 @@ use App\Services\BJSService;
 use App\Services\OrderService;
 use App\Services\OrderServiceV2;
 use App\Traits\LoggerTrait;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -981,6 +982,9 @@ class BJSWrapper
         $context = ['process' => 'fetch-tiktok'];
         Log::info('Fetching order', $context);
 
+        // Get the last processed order IDs from cache
+        $lastProcessedOrders = Cache::get('tiktok:last_processed_orders', []);
+        $newProcessedOrders = []; // Track newly processed orders to update cache
         $allOrders = collect(); // Collect all orders across watchlists
 
         foreach ($watchlists as $id) {
@@ -990,13 +994,26 @@ class BJSWrapper
             $orders = $this->bjsService->getOrdersData($id, 0);
             $orders = $orders->sortBy('created');
 
-            $allOrders = $allOrders->merge($orders);
+            // Filter out already processed orders
+            $newOrders = $orders->filter(function ($order) use ($lastProcessedOrders) {
+                return !in_array($order->id, $lastProcessedOrders);
+            });
+
+            // Collect new order IDs for updating the cache
+            $newOrderIds = $newOrders->pluck('id')->toArray();
+            $newProcessedOrders = array_merge($newProcessedOrders, $newOrderIds);
+
+            // Log how many new orders were found
+            $filteredCount = $newOrders->count();
+            Log::info("Found {$filteredCount} new orders out of {$orders->count()} total pending orders", $context);
+
+            $allOrders = $allOrders->merge($newOrders);
         }
 
-        Log::info('Processing orders: ' . count($allOrders), $context);
+        Log::info('Processing new orders: ' . count($allOrders), $context);
 
         if ($allOrders->isEmpty()) {
-            Log::info('No pending orders found');
+            Log::info('No new pending orders found');
             return 0;
         }
 
@@ -1005,7 +1022,7 @@ class BJSWrapper
 
         $chatId = config('services.telegram.chat_id');
         foreach ($orderChunks as $index => $chunk) {
-            $messages = ["<b>📋 Pending TikTok Orders</b>\n"];
+            $messages = ["<b>📋 New Pending TikTok Orders</b>\n"];
 
             foreach ($chunk as $order) {
                 // Format created timestamp (DD/MM HH:mm)
@@ -1033,14 +1050,16 @@ class BJSWrapper
 
             // Add pagination info
             $messages[] = sprintf(
-                "\n📋 <b>Page %d/%d | Total Orders: %d</b>",
+                "\n📋 <b>Page %d/%d | Total New Orders: %d</b>",
                 $index + 1,
                 $orderChunks->count(),
                 $allOrders->count()
             );
 
             // Send Telegram notification with HTML parse mode for proper code formatting
-            $this->sendTelegramNotification($messages, $chatId);
+            $notification = new TelegramNotification($messages, $chatId);
+            $notification->formatAs('HTML'); // Ensure HTML parse mode for code blocks
+            Notification::sendNow([$chatId], $notification);
 
             // Add a small delay between sending multiple notifications
             if ($index < $orderChunks->count() - 1) {
@@ -1048,28 +1067,31 @@ class BJSWrapper
             }
         }
 
+        // Update the cache with newly processed orders
+        // Keep a reasonable history (last 1000 orders) to prevent cache from growing too large
+        $updatedProcessedOrders = array_merge($lastProcessedOrders, $newProcessedOrders);
+        if (count($updatedProcessedOrders) > 1000) {
+            $updatedProcessedOrders = array_slice($updatedProcessedOrders, -1000);
+        }
+
+        // Store the processed order IDs for 24 hours
+        Cache::put('tiktok:last_processed_orders', $updatedProcessedOrders, now()->addDay());
+
         return $allOrders->count();
     }
 
     /**
-     * Send notification to Telegram using HTML parse mode
+     * Send a notification using TelegramNotification
      *
-     * @param array $messages
-     * @param string $chatId
+     * @param array $messages Array of message strings
+     * @param string $chatId Telegram chat ID
      * @return void
      */
-    private function sendTelegramNotification(array $messages, string $chatId)
+    private function sendTelegramNotification(array $messages, string $chatId): void
     {
-        try {
-            Notification::sendNow(
-                [$chatId],
-                (new TelegramNotification($messages))
-                    ->formatAs('HTML') // Use HTML parse mode instead of Markdown
-            );
-        } catch (\Exception $e) {
-            Log::error('Failed to send Telegram notification: ' . $e->getMessage(), [
-                'exception' => $e,
-            ]);
-        }
+        $notification = new TelegramNotification($messages, $chatId);
+        $notification->formatAs('HTML'); // Use HTML for proper code formatting
+        Notification::sendNow([$chatId], $notification);
+        Log::info("Telegram notification sent to {$chatId}");
     }
 }

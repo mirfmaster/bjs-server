@@ -203,10 +203,10 @@ class OrderController extends Controller
 
         return [
             'pk' => $media['pk'],
-            'owner_username' => $media['owner']['username'],
-            'owner_pk_id' => $media['owner']['pk_id'],
-            'owner_id' => $media['owner']['id'],
-            'owner_is_private' => $media['owner']['is_private'],
+            'owner_username' => $media['user']['username'],
+            'owner_pk_id' => $media['user']['pk_id'],
+            'owner_id' => $media['user']['id'],
+            'owner_is_private' => $media['user']['is_private'],
             'like_and_view_counts_disabled' => $media['like_and_view_counts_disabled'],
             'comment_count' => $media['comment_count'],
             'like_count' => $media['like_count'],

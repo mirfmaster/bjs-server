@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Client\BJSClient;
 use App\Client\InstagramClient;
-use App\Client\ProxyManager;
 use App\Client\UtilClient;
 use App\Models\Order;
 use App\Services\BJSService;
@@ -16,6 +15,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -61,8 +61,7 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
 
         $bjsService = new BJSService($bjsCli);
         $orderService = new OrderService(new Order);
-        $proxyManager = new ProxyManager;
-        $igCli = new InstagramClient($proxyManager);
+        $igCli = new InstagramClient;
 
         $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient, $igCli);
 
@@ -92,6 +91,34 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
             $bjsWrapper->processOrders();
             $bjsWrapper->syncOrdersBJS();
             // $bjsWrapper->handleServicesAvailability();
+
+            // Fetch TikTok orders
+            try {
+                Log::info('Starting TikTok order fetching...');
+                $tiktokOrderCount = $bjsWrapper->fetchTiktokOrder([147]);
+                Log::info("TikTok order fetching completed. Found {$tiktokOrderCount} orders.");
+            } catch (\Exception $e) {
+                Log::error('Error fetching TikTok orders: ' . $e->getMessage(), [
+                    'exception' => $e,
+                ]);
+            }
+
+            // Process Telegram updates
+            try {
+                Log::info('Processing Telegram updates...');
+                $exitCode = Artisan::call('telegram:fetch-updates');
+                $output = Artisan::output();
+
+                // Log the output of the command
+                Log::info('Telegram updates processed', [
+                    'exit_code' => $exitCode,
+                    'output' => trim($output),
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error processing Telegram updates: ' . $e->getMessage(), [
+                    'exception' => $e,
+                ]);
+            }
         } else {
             Log::info('Skipping BJS actions because login state is false, only processing direct order');
         }
@@ -99,3 +126,4 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         $bjsWrapper->processDirectOrders();
     }
 }
+

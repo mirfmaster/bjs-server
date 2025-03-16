@@ -16,9 +16,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->job(new GetUserIndofoll)->daily();
+        $schedule->job(new GetUserIndofoll())->daily();
 
-        $schedule->job(new SyncBJSOrders)
+        $schedule->job(new SyncBJSOrders())
             ->everyThreeMinutes()
             ->withoutOverlapping()
             ->when(function () {
@@ -38,6 +38,27 @@ class Kernel extends ConsoleKernel
         $schedule->command('redispo:delete-hold-state follow')
             ->hourly()
             ->appendOutputTo(storage_path('logs/scheduler.log'));
+
+        // Reset daily counters every day at midnight
+        $schedule->command('worker:stats-reset daily')
+            ->dailyAt('00:00')
+            ->runInBackground()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/stats-daily-reset.log'));
+
+        // Reset weekly counters every Monday at 00:05
+        $schedule->command('worker:stats-reset weekly')
+            ->weeklyOn(1, '00:05') // Monday at 00:05
+            ->runInBackground()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/stats-weekly-reset.log'));
+
+        // Reset monthly counters on the first day of each month at 00:10
+        $schedule->command('worker:stats-reset monthly')
+            ->monthlyOn(1, '00:10') // 1st day of month at 00:10
+            ->runInBackground()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/stats-monthly-reset.log'));
     }
 
     /**

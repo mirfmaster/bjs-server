@@ -35,6 +35,9 @@ class Worker extends Model
         'secret_key_2fa',
     ];
 
+    protected $casts = [
+        'statistics' => 'array',
+    ];
     /**
      * The attributes that should be cast.
      *

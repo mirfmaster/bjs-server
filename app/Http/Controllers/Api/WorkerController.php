@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Consts\OrderConst;
 use App\Http\Controllers\Controller;
 use App\Models\Worker;
 use Carbon\Carbon;
@@ -17,52 +18,39 @@ class WorkerController extends Controller
 {
     public function index()
     {
+        // Get worker counts by status
         $statusCounts = Worker::query()
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
-            ->orderByRaw("array_position(
-            ARRAY['active', 'relogin', 'new_login']
-        , status), status")
+            ->orderByRaw("array_position(ARRAY['active', 'relogin', 'new_login'], status), status")
             ->get();
 
         $workerCounters = Worker::query()->count();
 
-        $dailyNewWorkers = Worker::query()
-            ->where('code', 'bjs:indofoll-job')
-            ->whereDate('created_at', Carbon::today())
-            ->count();
+        // Calculate new workers from indofoll
+        $dailyNewWorkers = $this->getNewWorkerCount('daily');
+        $weeklyNewWorkers = $this->getNewWorkerCount('weekly');
+        $monthlyNewWorkers = $this->getNewWorkerCount('monthly');
 
-        $now = Carbon::now();
-        $weeklyNewWorkers = Worker::query()
-            ->where('code', 'bjs:indofoll-job')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->whereBetween('created_at', [
-                Carbon::now()->startOfWeek(),
-                Carbon::now()->endOfWeek(),
-            ])
-            ->count();
+        // Get worker statistics
+        $activeWorkers = $statusCounts->where('status', 'active')->first()->count ?? 0;
+        $activeMaxFollow = $this->getActiveWorkersWithMaxFollow();
 
-        $monthlyNewWorkers = Worker::query()
-            ->where('code', 'bjs:indofoll-job')
-            ->whereBetween('created_at', [
-                Carbon::now()->startOfMonth(),
-                Carbon::now()->endOfMonth(),
-            ])
-            ->count();
+        // Get 2FA statistics
+        $twoFactorsAll = Worker::whereNotNull('secret_key_2fa')->count();
+        $twoFactorsActive = Worker::whereNotNull('secret_key_2fa')->where('status', 'active')->count();
 
-        $activeMaxFollow = Worker::query()
-            ->where('status', 'active')
-            ->where('is_max_following_error', true)
-            ->count();
+        // Get worker limitations
+        $followLimit = OrderConst::TASK_LIMIT_ACCOUNT['follow'];
+        $likeLimit = OrderConst::TASK_LIMIT_ACCOUNT['like'];
+        $activeLimited = $this->getActiveLimitedWorkers($followLimit, $likeLimit);
 
-        $twoFactors = Worker::query()
-            ->whereNotNull('secret_key_2fa')
-            ->count();
-        $twoFactorsActive = Worker::query()
-            ->whereNotNull('secret_key_2fa')
-            ->where('status', 'active')
-            ->count();
+        // Get daily statistics
+        $statisticsDaily = $this->getDailyStatistics();
+
+        // Get worker locks count
+        $followLocks = count(Redis::keys('worker:*:lock-follow')) ?? 0;
+        $likeLocks = count(Redis::keys('worker:*:lock-like')) ?? 0;
 
         return view('pages.workers', [
             'total' => $workerCounters,
@@ -73,15 +61,101 @@ class WorkerController extends Controller
                 'monthly' => $monthlyNewWorkers,
             ],
             'twoFactors' => [
-                'all' => $twoFactors,
+                'all' => $twoFactorsAll,
                 'active' => $twoFactorsActive,
             ],
             'activeMaxFollow' => $activeMaxFollow,
             'locks' => [
-                'follow' => count(Redis::keys('worker:*:lock-follow')) ?? 0,
-                'like' => count(Redis::keys('worker:*:lock-like')) ?? 0,
+                'follow' => $followLocks,
+                'like' => $likeLocks,
+            ],
+            'statistics' => [
+                'active' => $activeWorkers - $activeLimited,
+                'active-limited' => $activeLimited,
+                'total_follows' => $statisticsDaily->total_follows ?? 0,
+                'total_likes' => $statisticsDaily->total_likes ?? 0,
             ],
         ]);
+    }
+
+    /**
+     * Get count of new workers based on time period
+     *
+     * @param  string  $period  'daily', 'weekly', or 'monthly'
+     * @return int Count of new workers
+     */
+    private function getNewWorkerCount(string $period): int
+    {
+        $query = Worker::query()->where('code', 'bjs:indofoll-job');
+
+        switch ($period) {
+            case 'daily':
+                $query->whereDate('created_at', Carbon::today());
+                break;
+            case 'weekly':
+                $query->whereBetween('created_at', [
+                    Carbon::now()->startOfWeek(),
+                    Carbon::now()->endOfWeek(),
+                ]);
+                break;
+            case 'monthly':
+                $query->whereBetween('created_at', [
+                    Carbon::now()->startOfMonth(),
+                    Carbon::now()->endOfMonth(),
+                ]);
+                break;
+        }
+
+        return $query->count();
+    }
+
+    /**
+     * Get count of active workers with max follow error
+     *
+     * @return int Count of workers
+     */
+    private function getActiveWorkersWithMaxFollow(): int
+    {
+        return Worker::query()
+            ->where('status', 'active')
+            ->where('is_max_following_error', true)
+            ->count();
+    }
+
+    /**
+     * Get count of active workers who have reached daily limits
+     *
+     * @param  int  $followLimit  Daily follow limit
+     * @param  int  $likeLimit  Daily like limit
+     * @return int Count of limited workers
+     */
+    private function getActiveLimitedWorkers(int $followLimit, int $likeLimit): int
+    {
+        return Worker::query()
+            ->where('status', 'active')
+            ->whereRaw("(
+            COALESCE((statistics->'follow'->>'daily')::integer, 0) > ? OR
+            COALESCE((statistics->'like'->>'daily')::integer, 0) > ?
+        )", [$followLimit, $likeLimit])
+            ->count();
+    }
+
+    /**
+     * Get aggregated daily statistics for active workers
+     *
+     * @return object Daily statistics totals
+     */
+    private function getDailyStatistics()
+    {
+        $results = DB::select("
+        SELECT
+            SUM(COALESCE((statistics->'follow'->>'daily')::integer, 0)) as total_follows,
+            SUM(COALESCE((statistics->'like'->>'daily')::integer, 0)) as total_likes
+        FROM workers
+        WHERE status = 'active'
+    ");
+
+        return $results[0] ?? (object) ['total_follows' => 0, 'total_likes' => 0];
     }
 
     public function getInfo(Request $request): JsonResponse
@@ -138,7 +212,7 @@ class WorkerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update worker status: '.$e->getMessage(),
+                'message' => 'Failed to update worker status: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -160,7 +234,7 @@ class WorkerController extends Controller
         try {
             // Store the uploaded file
             $file = $request->file('csv_file');
-            $filename = 'workers_'.date('Y_m_d_His').'.csv';
+            $filename = 'workers_' . date('Y_m_d_His') . '.csv';
             $path = $file->storeAs('assets/prod', $filename);
 
             if (! $path) {
@@ -175,7 +249,7 @@ class WorkerController extends Controller
 
             // Run the import command
             $exitCode = Artisan::call('workers:import', [
-                'file' => storage_path('app/'.$path),
+                'file' => storage_path('app/' . $path),
                 '--delimiter' => $delimiter,
             ]);
 

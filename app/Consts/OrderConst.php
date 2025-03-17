@@ -32,4 +32,13 @@ class OrderConst
         4 => 'cancel',
         5 => 'processing',
     ];
+
+    /////////////////
+    // EACH WORKER //
+    /////////////////
+    public const TASK_LIMIT_ACCOUNT = [
+        'follow' => 25,
+        'like' => 200,
+        'story' => 300,
+    ];
 }

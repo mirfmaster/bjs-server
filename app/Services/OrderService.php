@@ -102,9 +102,49 @@ class OrderService
             ->get();
     }
 
+    public function getOrdersV2()
+    {
+        $likeOrders = $this->order
+            ->whereIn('status', ['inprogress', 'processing'])
+            ->where('kind', 'like')
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'asc')
+            ->limit(5)
+            ->get();
+
+        $storyOrders = $this->order
+            ->whereIn('status', ['inprogress', 'processing'])
+            ->where('kind', 'story')
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'asc')
+            ->limit(4)
+            ->get();
+
+        $commentOrders = $this->order
+            ->whereIn('status', ['inprogress', 'processing'])
+            ->where('kind', 'comment')
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'asc')
+            ->limit(3)
+            ->get();
+
+        $followOrders = $this->order
+            ->whereIn('status', ['inprogress', 'processing'])
+            ->where('kind', 'follow')
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'asc')
+            ->limit(1)
+            ->get();
+
+        // Merge all collections
+        return $likeOrders->concat($storyOrders)
+            ->concat($commentOrders)
+            ->concat($followOrders);
+    }
+
     public function updateCache()
     {
-        $orders = $this->getOrders();
+        $orders = $this->getOrdersV2();
 
         Redis::set('order:lists', serialize($orders));
     }

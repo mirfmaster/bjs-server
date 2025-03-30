@@ -17,7 +17,7 @@ class OrderController extends Controller
 {
     private $orderService;
 
-    public function __construct()
+    public function __construct(public BJSService $bjsService)
     {
         $this->orderService = new OrderService(new Order());
     }
@@ -136,9 +136,11 @@ class OrderController extends Controller
         $order->priority = 3;
         $order->margin_request = $marginRequest;
 
-        $bjsService = new BJSService(new BJSClient());
         $igCli = new InstagramClient();
-        $identifier = $bjsService->extractIdentifier($target);
+        $identifier = $this->bjsService->extractIdentifier($target);
+        if (! $this->bjsService->auth()) {
+            return back()->with('error', 'BJS Cli auth failed, please retry');
+        }
 
         if ($type == 'follow') {
             try {
@@ -149,7 +151,7 @@ class OrderController extends Controller
                 }
                 $order->username = $data->username;
             } catch (\Exception $e) {
-                return back()->with('error', 'Failed to fetch user data: '.$e->getMessage());
+                return back()->with('error', 'Failed to fetch user data: ' . $e->getMessage());
             }
         } elseif ($type == 'like') {
             try {
@@ -157,7 +159,7 @@ class OrderController extends Controller
                 $order->username = $data['owner_username'];
                 $order->media_id = $data['pk'];
             } catch (\Exception $e) {
-                return back()->with('error', 'Failed to fetch media data: '.$e->getMessage());
+                return back()->with('error', 'Failed to fetch media data: ' . $e->getMessage());
             }
         }
 
@@ -283,14 +285,14 @@ class OrderController extends Controller
 
                 if ($newStatus === 'cancel') {
                     $updateReq = $cli->bjs->cancelOrder($order->bjs_id);
-                    $string .= 'StatusUpdate: '.($updateReq ? 'TRUE' : 'FALSE');
+                    $string .= 'StatusUpdate: ' . ($updateReq ? 'TRUE' : 'FALSE');
                 } elseif ($newStatus === 'partial') {
                     $remainingCount = $this->orderService->getRemains();
                     $remainingUpdated = $cli->bjs->setRemains($order->bjs_id, $remainingCount);
-                    $string .= 'RemainUpdate: '.($remainingUpdated ? 'TRUE' : 'FALSE');
+                    $string .= 'RemainUpdate: ' . ($remainingUpdated ? 'TRUE' : 'FALSE');
 
                     $updateReq = $cli->bjs->changeStatus($order->bjs_id, $newStatus);
-                    $string .= 'StatusUpdate: '.($updateReq ? 'TRUE' : 'FALSE');
+                    $string .= 'StatusUpdate: ' . ($updateReq ? 'TRUE' : 'FALSE');
                 }
             }
 
@@ -301,17 +303,19 @@ class OrderController extends Controller
             $this->orderService->setStatusRedis($newStatus);
             $this->orderService->updateCache();
 
-            return back()->with('success', 'Order deleted successfully. '.$string);
+            return back()->with('success', 'Order deleted successfully. ' . $string);
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to delete order: '.$e->getMessage());
+            return back()->with('error', 'Failed to delete order: ' . $e->getMessage());
         }
     }
 
     public function refill(Order $order)
     {
         $previousTarget = $order->requested + $order->start_count;
-        $bjsService = new BJSService(new BJSClient());
-        $identifier = $bjsService->extractIdentifier($order->target);
+        $identifier = $this->bjsService->extractIdentifier($order->target);
+        if (! $this->bjsService->auth()) {
+            return back()->with('error', 'BJS Cli auth failed, please retry');
+        }
 
         try {
             $currentData = $this->getCurrentData($order->kind, $identifier);
@@ -344,7 +348,7 @@ class OrderController extends Controller
 
             return back()->with('success', 'Order is back to current process with status refill');
         } catch (\Exception $e) {
-            return back()->with('error', "Failed to fetch {$order->kind} data: ".$e->getMessage());
+            return back()->with('error', "Failed to fetch {$order->kind} data: " . $e->getMessage());
         }
     }
 

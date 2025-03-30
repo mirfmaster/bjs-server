@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Client\BJSClient;
 use App\Client\InstagramClient;
 use App\Client\UtilClient;
 use App\Models\Order;
@@ -57,13 +56,11 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
     {
         Log::info('Starting job SyncBJSOrders');
 
-        $bjsCli = new BJSClient;
+        $bjsService = app(BJSService::class);
+        $orderService = new OrderService(new Order());
+        $igCli = new InstagramClient();
 
-        $bjsService = new BJSService($bjsCli);
-        $orderService = new OrderService(new Order);
-        $igCli = new InstagramClient;
-
-        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient, $igCli);
+        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient(), $igCli);
 
         $loginStateBjs = Redis::get('system:bjs:login-state');
         if ((bool) $loginStateBjs) {
@@ -126,4 +123,3 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         $bjsWrapper->processDirectOrders();
     }
 }
-

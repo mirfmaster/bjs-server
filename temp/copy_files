@@ -1,4 +1,6 @@
 app/Jobs/*
+app/Console/Commands/Redispo/*
+app/Console/Commands/Tiktok/*
 app/Console/Commands/*
 app/Models/*
 app/Services/*

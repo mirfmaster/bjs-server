@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Client\BJSClient;
 use App\Client\RedisCookieJar;
+use App\Repository\RedisTiktokRepository;
 use App\Services\BJSService;
+use App\Services\BJSTiktokService;
 use Illuminate\Support\ServiceProvider;
 
 class BJSServiceProvider extends ServiceProvider
@@ -32,6 +34,19 @@ class BJSServiceProvider extends ServiceProvider
                 $app->make(BJSClient::class)
             );
         });
+
+        // Bind Redis repository
+        $this->app->singleton(RedisTiktokRepository::class, function ($app) {
+            return new RedisTiktokRepository();
+        });
+
+        // Bind BJSTiktokService with dependencies
+        $this->app->bind(BJSTiktokService::class, function ($app) {
+            return new BJSTiktokService(
+                $app->make(BJSClient::class),
+                $app->make(RedisTiktokRepository::class)
+            );
+        });
     }
 
     /**
@@ -44,4 +59,3 @@ class BJSServiceProvider extends ServiceProvider
         //
     }
 }
-

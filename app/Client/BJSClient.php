@@ -205,6 +205,31 @@ class BJSClient
         }
     }
 
+    public function authenticate(): bool
+    {
+        // First check if current session is valid
+        $isAuth = $this->checkAuth();
+        if ($isAuth) {
+            return true;
+        }
+
+        Log::info('Session not authenticated, attempting token-based login');
+
+        // Try token-based auth first
+        $tokenLoginSuccess = $this->loginWithToken();
+        if ($tokenLoginSuccess) {
+            Log::info('Token-based login successful');
+
+            return true;
+        }
+        Log::warning('Token-based login failed, falling back to form-based login');
+
+        Log::error('All authentication attempts failed');
+
+        return false;
+    }
+
+
     private function getCSRFToken(): ?string
     {
         try {
@@ -387,6 +412,22 @@ class BJSClient
             return collect([]);
         }
     }
+
+    public function getOrders(int $serviceId, int $status, int $pageSize = 1000): Collection
+    {
+        throw_if($pageSize > 1000, new \Exception('Max pagesize is 1000'));
+        try {
+            $request = $this->getOrdersList($status, $serviceId, $pageSize);
+            $resp = json_decode($request->getBody(), false);
+
+            return collect($resp->data->orders);
+        } catch (\Throwable $th) {
+            $this->logError($th);
+
+            return collect([]);
+        }
+    }
+
 
     /**
      * Get order details by ID with optional service ID

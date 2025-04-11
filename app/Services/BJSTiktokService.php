@@ -162,8 +162,7 @@ class BJSTiktokService
 
         foreach ($processedOrders as $order) {
             try {
-                // $success = $this->completeOrder($order);
-                $success = true;
+                $success = $this->completeOrder($order);
 
                 if ($success) {
                     $result['success']++;

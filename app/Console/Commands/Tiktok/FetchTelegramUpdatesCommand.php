@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+// @deprecated
 class FetchTelegramUpdatesCommand extends Command
 {
     /**
@@ -49,13 +50,13 @@ class FetchTelegramUpdatesCommand extends Command
             ]);
 
             if (! $response->successful()) {
-                $this->error('Failed to fetch updates: '.$response->body());
+                $this->error('Failed to fetch updates: ' . $response->body());
 
                 return Command::FAILURE;
             }
 
             $updates = $response->json('result', []);
-            $this->info('Received '.count($updates).' updates');
+            $this->info('Received ' . count($updates) . ' updates');
 
             foreach ($updates as $update) {
                 $this->processUpdate($update);
@@ -69,7 +70,7 @@ class FetchTelegramUpdatesCommand extends Command
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('Error fetching Telegram updates: '.$e->getMessage());
+            $this->error('Error fetching Telegram updates: ' . $e->getMessage());
             Log::error('Error fetching Telegram updates', ['exception' => $e]);
 
             return Command::FAILURE;

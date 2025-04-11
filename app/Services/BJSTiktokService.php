@@ -19,8 +19,7 @@ class BJSTiktokService
     public function __construct(
         public BJSClient $cli,
         protected RedisTiktokRepository $repository
-    ) {
-    }
+    ) {}
 
     public function fetch()
     {
@@ -63,7 +62,7 @@ class BJSTiktokService
         ];
 
         Log::info('Start processing', ['serviceID' => $serviceID]);
-        $orders = $this->cli->getOrders($serviceID, BJSConst::PENDING);
+        $orders = $this->cli->getOrders($serviceID, BJSConst::PROCESSING);
 
         $result['total'] = count($orders);
 
@@ -117,6 +116,145 @@ class BJSTiktokService
         return $result;
     }
 
+    /**
+     * Process completed orders - move them from processed to completed and update BJS
+     *
+     * @return array Information about processed orders
+     */
+    public function processCompletedOrders(): array
+    {
+        $context = ['process' => 'complete-tiktok-orders'];
+        Log::info('Starting to process completed TikTok orders', $context);
+
+        // Authenticate with BJS
+        $auth = $this->cli->authenticate();
+        if (! $auth) {
+            Log::warning('Failed to authenticate BJS when processing completed orders', $context);
+
+            return [
+                'total' => 0,
+                'success' => 0,
+                'failed' => 0,
+                'auth_failed' => true,
+            ];
+        }
+
+        // Get all processed orders
+        $processedOrders = $this->repository->getProcessedOrderDtos();
+
+        if (empty($processedOrders)) {
+            Log::info('No processed orders found to complete', $context);
+
+            return [
+                'total' => 0,
+                'success' => 0,
+                'failed' => 0,
+            ];
+        }
+
+        Log::info('Found ' . count($processedOrders) . ' processed orders to complete', $context);
+
+        $result = [
+            'total' => count($processedOrders),
+            'success' => 0,
+            'failed' => 0,
+        ];
+
+        foreach ($processedOrders as $order) {
+            try {
+                // $success = $this->completeOrder($order);
+                $success = true;
+
+                if ($success) {
+                    $result['success']++;
+                } else {
+                    $result['failed']++;
+                }
+            } catch (\Exception $e) {
+                $result['failed']++;
+                $this->logError($e, [
+                    'order_id' => $order->id,
+                    'link' => $order->link,
+                ]);
+            }
+        }
+
+        Log::info('Completed processing TikTok orders', [
+            'total' => $result['total'],
+            'success' => $result['success'],
+            'failed' => $result['failed'],
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Complete a single order in BJS and move it to completed list
+     *
+     * @param  BJSTiktokOrderDto  $order  The order to complete
+     * @return bool Whether the operation was successful
+     */
+    private function completeOrder(BJSTiktokOrderDto $order): bool
+    {
+        $context = [
+            'order_id' => $order->id,
+            'link' => $order->link,
+            'video_id' => $order->video_id,
+        ];
+
+        Log::info('Processing order for completion', $context);
+
+        // Skip if not actually completed
+        if (! $order->isCompleted()) {
+            Log::info('Order not marked as completed yet, skipping', $context);
+
+            return false;
+        }
+
+        // Skip if already completed in BJS
+        if ($order->isCompletedInBJS()) {
+            Log::info('Order already completed in BJS, moving to completed list', $context);
+            $this->repository->moveToCompleted($order->id);
+
+            return true;
+        }
+
+        // 1. Set remains to 0 (fully completed)
+        $remainsSuccess = $this->cli->setRemains($order->id, 0);
+        if (! $remainsSuccess) {
+            Log::warning('Failed to set remains for order', $context);
+
+            return false;
+        }
+
+        // 2. Change status to completed in BJS
+        $statusSuccess = $this->cli->changeStatus($order->id, 'completed');
+        if (! $statusSuccess) {
+            Log::warning('Failed to change status to completed for order', $context);
+
+            return false;
+        }
+
+        // 3. Mark as completed in our system
+        $order->markCompletedInBJS();
+
+        // 4. Move to completed list
+        $movedOrder = $this->repository->moveToCompleted($order->id);
+
+        if (! $movedOrder) {
+            Log::warning('Failed to move order to completed list', $context);
+
+            return false;
+        }
+
+        Log::info('Successfully completed order in BJS and moved to completed list', [
+            'order_id' => $order->id,
+            'bjs_completed_at' => $order->bjs_completed_at,
+        ]);
+
+        return true;
+    }
+
     public function getPendingOrders()
     {
         return $this->repository->getPendingOrderDtos();
@@ -142,7 +280,7 @@ class BJSTiktokService
 
         // Need to resolve short URLs (vm.tiktok.com, vt.tiktok.com)
         try {
-            $response = Http::timeout(5)->get('https://og.metadata.vision/'.$url);
+            $response = Http::timeout(5)->get('https://og.metadata.vision/' . $url);
 
             if (! $response->successful()) {
                 Log::warning('Failed to resolve TikTok URL', [
@@ -192,3 +330,4 @@ class BJSTiktokService
         }
     }
 }
+

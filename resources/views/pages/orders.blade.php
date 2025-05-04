@@ -408,7 +408,7 @@
                                                 <span
                                                     class="text-secondary text-xs font-weight-bold">#{{ $order->id }}</span>
                                                 <span
-                                                    class="text-secondary text-xs font-weight-bold">{{ $order->created_at?->format('Y-m-d H:i')</span>
+                                                    class="text-secondary text-xs font-weight-bold">{{ $order->created_at?->format('Y-m-d H:i') }}</span>
                                             </div>
                                         </td>
                                         <td>

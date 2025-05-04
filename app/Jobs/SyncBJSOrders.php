@@ -57,10 +57,10 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         Log::info('Starting job SyncBJSOrders');
 
         $bjsService = app(BJSService::class);
-        $orderService = new OrderService(new Order());
-        $igCli = new InstagramClient();
+        $orderService = new OrderService(new Order);
+        $igCli = new InstagramClient;
 
-        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient(), $igCli);
+        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient, $igCli);
 
         $loginStateBjs = Redis::get('system:bjs:login-state');
         if ((bool) $loginStateBjs) {
@@ -89,16 +89,17 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
             $bjsWrapper->syncOrdersBJS();
             // $bjsWrapper->handleServicesAvailability();
 
-            // Fetch TikTok orders
-            try {
-                Log::info('Starting TikTok order fetching...');
-                $tiktokOrderCount = $bjsWrapper->fetchTiktokOrder([147]);
-                Log::info("TikTok order fetching completed. Found {$tiktokOrderCount} orders.");
-            } catch (\Exception $e) {
-                Log::error('Error fetching TikTok orders: ' . $e->getMessage(), [
-                    'exception' => $e,
-                ]);
-            }
+            // NOTE: DEPRECATED SINCE ITS NOT WORTH THE PENNY
+            // // Fetch TikTok orders
+            // try {
+            //     Log::info('Starting TikTok order fetching...');
+            //     $tiktokOrderCount = $bjsWrapper->fetchTiktokOrder([147]);
+            //     Log::info("TikTok order fetching completed. Found {$tiktokOrderCount} orders.");
+            // } catch (\Exception $e) {
+            //     Log::error('Error fetching TikTok orders: ' . $e->getMessage(), [
+            //         'exception' => $e,
+            //     ]);
+            // }
 
             // Process Telegram updates
             try {

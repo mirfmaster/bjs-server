@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\API\TelegramWebhookController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\WorkerController;
 use App\Http\Controllers\OrderController;
 use Illuminate\Http\Request;

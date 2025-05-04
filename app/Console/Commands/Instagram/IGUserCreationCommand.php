@@ -97,7 +97,7 @@ class IGUserCreationCommand extends Command
                         }
                     }
                 } catch (\Exception $e) {
-                    $this->error("Attempt {$attemptCount} failed: ".$e->getMessage());
+                    $this->error("Attempt {$attemptCount} failed: " . $e->getMessage());
 
                     if ($attemptCount >= $maxAttempts) {
                         throw $e;
@@ -121,8 +121,8 @@ class IGUserCreationCommand extends Command
 
             return Command::FAILURE;
         } catch (\Exception $e) {
-            $this->error('Error: '.$e->getMessage());
-            Log::error('Instagram account creation failed: '.$e->getMessage(), [
+            $this->error('Error: ' . $e->getMessage());
+            Log::error('Instagram account creation failed: ' . $e->getMessage(), [
                 'exception' => $e,
             ]);
 
@@ -140,6 +140,13 @@ class IGUserCreationCommand extends Command
         $this->userAgent = $this->repo->generateUserAgent();
 
         $this->info('Getting initial session...');
+
+        // $this->userAgent = $userAgent;
+        $cookies = $this->getInstagramCookies($this->userAgent);
+        $this->cookies = $cookies;
+        $this->formatCookies($this->cookies);
+        $this->deviceId = $cookies['mid'];
+
         $initialRequest = Http::withHeaders([
             'User-Agent' => $this->userAgent,
         ])
@@ -149,17 +156,10 @@ class IGUserCreationCommand extends Command
                 'proxy' => $this->getProxy(),
             ])
             ->get('https://www.instagram.com/accounts/emailsignup/');
-
-        $userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
-        // $this->userAgent = $userAgent;
-        $cookies = $this->getInstagramCookies($userAgent);
-        $this->cookies = $cookies;
-        $this->deviceId = $cookies['mid'];
-
         $response = $initialRequest->body();
         $passwordEnc = $this->extractPasswordEncryptionTokens($response);
 
-        $password = 'IBJSG'.rand(1000, 999999);
+        $password = 'IBJSG' . rand(1000, 999999);
         $reqEncrypt = Http::get('http://139.162.52.90:8088/encrypt', [
             'key_id' => $passwordEnc['key_id'],
             'pub_key' => $passwordEnc['public_key'],
@@ -181,8 +181,20 @@ class IGUserCreationCommand extends Command
         ]);
 
         if (! $this->cookies || empty($this->cookies['csrftoken']) || empty($this->cookies['mid'])) {
-            throw new \Exception('Failed to get required cookies. Got: '.json_encode($this->cookies));
+            throw new \Exception('Failed to get required cookies. Got: ' . json_encode($this->cookies));
         }
+    }
+
+    public function generateDeviceId(string $seed): string
+    {
+        // Set timezone to Jakarta
+        config(['app.timezone' => 'Asia/Jakarta']);
+
+        // Get current timestamp
+        $timestamp = now()->timestamp;
+
+        // Create a device ID by combining the seed and timestamp
+        return 'android-' . substr(md5($seed . $timestamp), 16);
     }
 
     /**
@@ -193,6 +205,7 @@ class IGUserCreationCommand extends Command
         $name = $this->repo->getRandomName();
         $this->info("Using name: $name");
 
+        // $unameVariations = $this->repo->get($name['name']);
         $unameVariations = $this->repo->getUsernameVariations($name);
         $username = $unameVariations[7];
 
@@ -233,7 +246,7 @@ class IGUserCreationCommand extends Command
             ]);
 
         if (! $response->successful() && ! str_contains($response->body(), '"ok"')) {
-            $this->error('Failed to send verification email: '.$response->body());
+            $this->error('Failed to send verification email: ' . $response->body());
 
             return false;
         }
@@ -286,7 +299,7 @@ class IGUserCreationCommand extends Command
             ->post('https://www.instagram.com/api/v1/web/accounts/web_create_ajax/', $requestBody);
 
         $responseBody = $response->body();
-        $this->info('Response: '.$responseBody);
+        $this->info('Response: ' . $responseBody);
 
         return $response->successful() && str_contains($responseBody, '"ok"');
     }
@@ -329,10 +342,9 @@ class IGUserCreationCommand extends Command
      */
     protected function formatCookies(array $cookies): string
     {
-        return collect($cookies)
-            ->except('device_id')
-            ->map(fn ($value, $key) => "$key=$value")
-            ->implode('; ');
+        $cookie = 'Cookie: rur=FTW; ig_did=' . $cookies['ig_did'] . ';csrftoken=' . $cookies['csrftoken'] . ';mid=' . $cookies['mid'];
+
+        return $cookie;
     }
 
     /**
@@ -431,14 +443,25 @@ class IGUserCreationCommand extends Command
         return $tokens;
     }
 
-    public function getInstagramCookies(string $userAgent): array
+    public function getInstagramCookies(string $userAgent, ?string $proxy = null): array
     {
         // Make request to Instagram
-        $ch = curl_init('https://www.instagram.com/accounts/emailsignup/');
+        $ch = curl_init('https://i.instagram.com/api/v1/web/accounts/login/ajax/');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_USERAGENT, $userAgent);
+
+        // Add proxy configuration if provided
+        if ($proxy) {
+            curl_setopt($ch, CURLOPT_PROXY, $proxy);
+
+            // If proxy requires authentication (format: username:password@host:port)
+            if (strpos($proxy, '@') !== false) {
+                $proxyAuth = substr($proxy, 0, strpos($proxy, '@'));
+                curl_setopt($ch, CURLOPT_PROXYUSERPWD, $proxyAuth);
+            }
+        }
 
         $cookies = [];
 
@@ -475,11 +498,11 @@ class IGUserCreationCommand extends Command
 
                     // Store domain and expiry information if needed
                     if (isset($attributes['domain'])) {
-                        $cookies[$name.'_domain'] = $attributes['domain'];
+                        $cookies[$name . '_domain'] = $attributes['domain'];
                     }
 
                     if (isset($attributes['expires'])) {
-                        $cookies[$name.'_expires'] = $attributes['expires'];
+                        $cookies[$name . '_expires'] = $attributes['expires'];
                     }
                 }
             }

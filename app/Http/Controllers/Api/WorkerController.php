@@ -285,4 +285,15 @@ class WorkerController extends Controller
             ], 500);
         }
     }
+
+    public function getLatestVersion()
+    {
+        $latest = Redis::get('system:worker:latest-version');
+        $version = Redis::get('system:worker:version');
+
+        return response()->json([
+            'latest-version' => $latest,
+            'version' => $version,
+        ]);
+    }
 }

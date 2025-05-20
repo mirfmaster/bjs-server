@@ -33,10 +33,14 @@ class Worker extends Model
         'last_work',
         'data',
         'secret_key_2fa',
+        'warned_follow_at',
+        'warned_like_at',
     ];
 
     protected $casts = [
         'statistics' => 'array',
+        'warned_follow_at' => 'datetime',
+        'warned_like_at' => 'datetime',
     ];
     /**
      * The attributes that should be cast.

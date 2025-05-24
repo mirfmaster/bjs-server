@@ -35,6 +35,7 @@ class Worker extends Model
         'secret_key_2fa',
         'warned_follow_at',
         'warned_like_at',
+        'proxy_url',
     ];
 
     protected $casts = [

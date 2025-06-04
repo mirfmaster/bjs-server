@@ -22,9 +22,13 @@ class Kernel extends ConsoleKernel
             ->everyThreeMinutes()
             ->withoutOverlapping()
             ->when(function () {
-                Log::warning('Global work is false, skipping job');
+                $enabled = (bool) Redis::get('system:global-work');
 
-                return (bool) Redis::get('system:global-work');
+                if (! $enabled) {
+                    Log::warning('Global work disabled; skipping SyncBJSOrders job.');
+                }
+
+                return $enabled;
             });
 
         // $schedule->command('redispo:move-users')->daily()->appendOutputTo(storage_path('logs/scheduler.log'));

@@ -109,7 +109,7 @@ class OrderService
             ->where('kind', 'like')
             ->orderBy('priority', 'desc')
             ->orderBy('created_at', 'asc')
-            ->limit(5)
+            ->limit(8)
             ->get();
 
         $storyOrders = $this->order

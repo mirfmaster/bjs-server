@@ -23,6 +23,7 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->when(function () {
                 $enabled = (bool) Redis::get('system:global-work');
+                Log::info('state', ['system:global-work' => $enabled ? 'yes' : 'no']);
 
                 if (! $enabled) {
                     Log::warning('Global work disabled; skipping SyncBJSOrders job.');

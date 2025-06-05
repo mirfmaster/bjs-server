@@ -81,7 +81,7 @@ class FetchLikeOrder
                 sleep(1);
                 $service->bjs->changeStatus($order->id, 'inprogress');
 
-                $count = $order->count;
+                $requested = $order->count;
                 $data = [
                     'bjs_id' => $order->id,
                     'kind' => 'like',
@@ -92,8 +92,8 @@ class FetchLikeOrder
                     'price' => $order->charge,
                     'media_id' => $info->media_id,
                     'start_count' => $info->like_count,
-                    'requested' => $count,
-                    'margin_request' => round($count + max(10, min(100, $count * (self::BONUS_PERCENTAGE / 100)))),
+                    'requested' => $requested,
+                    'margin_request' => round($requested + max(10, min(100, $requested * (self::BONUS_PERCENTAGE / 100)))),
                     'status' => 'inprogress',
                     'status_bjs' => 'inprogress',
                     'source' => 'bjs',

@@ -2,8 +2,9 @@
 
 namespace App\Console\Commands\BJS;
 
+use App\Actions\BJS\FetchFollowOrder;
 use App\Actions\BJS\FetchLikeOrder;
-use App\Models\Order;
+use App\Client\InstagramClient;
 use App\Services\BJSService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
@@ -33,6 +34,8 @@ class GetOrdersCommand extends Command
     {
         /** @var BJSService */
         $bjsService = app(BJSService::class);
+        /** @var InstagramClient */
+        $igClient = app(InstagramClient::class);
 
         // TODO: update to use cache;
         $loginStateBjs = Redis::get('system:bjs:login-state');
@@ -44,25 +47,23 @@ class GetOrdersCommand extends Command
         $auth = $bjsService->auth();
         if (! $auth) {
             $this->warn('Authentication failed');
+
+            return Command::FAILURE;
         }
 
+        $this->info('Starting fetching like orders');
         /** @var FetchLikeOrder */
         $fetchLikeAction = app(FetchLikeOrder::class);
-        foreach ([165] as $serviceID) {
+        foreach ([167] as $serviceID) {
             $fetchLikeAction->handle($bjsService, $serviceID);
         }
 
-        // $stats = Order::query()
-        //     ->selectRaw("
-        //             'follow' as kind,
-        //             COALESCE(SUM(requested), 0) as total_requested,
-        //             COALESCE(SUM(margin_request), 0) as total_margin_requested
-        //         ")
-        //     ->whereDate('created_at', now()->toDateString())
-        //     ->where('kind', 'follow')
-        //     ->first();
-        //
-        // $currentTotal = $stats->total_requested;
+        $this->info('Starting fetching follow orders');
+        /** @var FetchFollowOrder */
+        $fetchLikeAction = app(FetchFollowOrder::class);
+        foreach ([164] as $serviceID) {
+            $fetchLikeAction->handle($bjsService, $igClient, $serviceID);
+        }
 
         return Command::SUCCESS;
     }

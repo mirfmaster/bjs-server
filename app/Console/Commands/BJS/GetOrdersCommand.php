@@ -65,6 +65,8 @@ class GetOrdersCommand extends Command
             $fetchLikeAction->handle($bjsService, $igClient, $serviceID);
         }
 
+        $this->call('order:cache');
+
         return Command::SUCCESS;
     }
 }

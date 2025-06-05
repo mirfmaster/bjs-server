@@ -18,6 +18,11 @@ class Kernel extends ConsoleKernel
     {
         $schedule->job(new GetUserIndofoll())->daily();
 
+        $schedule->command('bjs:fetch')
+            ->everyThreeMinutes()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/bjs_fetch.log'));
+
         $schedule->job(new SyncBJSOrders())
             ->everyThreeMinutes()
             ->withoutOverlapping()

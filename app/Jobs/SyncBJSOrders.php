@@ -57,10 +57,10 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
         Log::info('Starting job SyncBJSOrders');
 
         $bjsService = app(BJSService::class);
-        $orderService = new OrderService(new Order);
-        $igCli = new InstagramClient;
+        $orderService = new OrderService(new Order());
+        $igCli = new InstagramClient();
 
-        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient, $igCli);
+        $bjsWrapper = new BJSWrapper($bjsService, $orderService, new UtilClient(), $igCli);
 
         $loginStateBjs = Redis::get('system:bjs:login-state');
         if ((bool) $loginStateBjs) {
@@ -83,8 +83,8 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
                 ->first();
 
             $currentTotal = $stats->total_requested;
-            $bjsWrapper->fetchLikeOrder($watchlistLike);
-            $bjsWrapper->fetchFollowOrder($watchlistFollow, $currentTotal);
+            // $bjsWrapper->fetchLikeOrder($watchlistLike);
+            // $bjsWrapper->fetchFollowOrder($watchlistFollow, $currentTotal);
             $bjsWrapper->processOrders();
             $bjsWrapper->syncOrdersBJS();
             // $bjsWrapper->handleServicesAvailability();

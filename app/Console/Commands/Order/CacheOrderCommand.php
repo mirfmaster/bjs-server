@@ -116,5 +116,7 @@ class CacheOrderCommand extends Command
             ->put("order:{$id}:duplicate_interaction", 0, $this->ttl);
         Cache::tags($tags)
             ->put("order:{$id}:requested", $requested, $this->ttl);
+        Cache::tags($tags)
+            ->put("order:{$id}:fail_reason", '', $this->ttl);
     }
 }

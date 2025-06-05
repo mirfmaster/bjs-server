@@ -9,6 +9,8 @@ use App\Services\BJSService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
@@ -50,21 +52,35 @@ class OrderController extends Controller
         $history = $historyQuery->paginate($perPage)->withQueryString();
 
         $processeds = $this->orderService->getCachedOrders();
+        $cachedOrders = Cache::getMultiple(['order:list:like', 'order:list:follow'], collect([]));
+        $processeds = collect(Arr::collapse($cachedOrders))
+            ->transform(function (Order $order) {
+                $id = $order->id;
 
-        // Enhance order data with Redis information
-        $processeds = $processeds->map(function ($order) {
-            $this->orderService->setOrderID($order->id);
-            $redisData = $this->orderService->getOrderRedisKeys();
+                $raw = Cache::tags("order:$id")->many([
+                    "order:{$id}:status",
+                    "order:{$id}:processing",
+                    "order:{$id}:processed",
+                    "order:{$id}:failed",
+                    "order:{$id}:duplicate_interaction",
+                    "order:{$id}:requested",
+                    "order:{$id}:fail_reason",
+                ]);
 
-            $order->redis_status = $redisData['status'];
-            $order->redis_processing = $redisData['processing'];
-            $order->redis_processed = $redisData['processed'];
-            $order->redis_failed = $redisData['failed'];
-            $order->redis_duplicate = $redisData['duplicate_interaction'];
-            $order->redis_requested = $redisData['requested'];
+                // normalize them to ['status'=>..., 'processing'=>..., …]
+                $state = collect($raw)
+                    ->mapWithKeys(function ($value, $fullKey) {
+                        $parts = explode(':', $fullKey);
+                        $key = end($parts);
 
-            return $order;
-        });
+                        return [$key => $value];
+                    });
+
+                // dynamically add a `state` property to the Order model
+                $order->state = $state;
+
+                return $order;
+            });
 
         $orderCompleted = Order::query()->where('status', 'completed')->count();
         $orderProgress = Order::query()->where('status', 'inprogress')->count();

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 
 class OrderService
@@ -67,6 +68,34 @@ class OrderService
             'failed' => (int) $values[3],
             'duplicate_interaction' => (int) $values[4],
             'requested' => (int) $values[5],
+        ];
+    }
+
+    public function getCachedState(): array
+    {
+        $tags = ["order:{$this->id}"];
+
+        // list out the exact cache‐keys you want
+        $cacheKeys = [
+            "order:{$this->id}:status",
+            "order:{$this->id}:processing",
+            "order:{$this->id}:processed",
+            "order:{$this->id}:failed",
+            "order:{$this->id}:duplicate_interaction",
+            "order:{$this->id}:requested",
+        ];
+
+        // batch‐pull them
+        $raw = Cache::tags($tags)->many($cacheKeys);
+
+        // map them into your nice array, casting ints where needed
+        return [
+            'status' => $raw[$cacheKeys[0]] ?? null,
+            'processing' => (int) ($raw[$cacheKeys[1]] ?? 0),
+            'processed' => (int) ($raw[$cacheKeys[2]] ?? 0),
+            'failed' => (int) ($raw[$cacheKeys[3]] ?? 0),
+            'duplicate_interaction' => (int) ($raw[$cacheKeys[4]] ?? 0),
+            'requested' => (int) ($raw[$cacheKeys[5]] ?? 0),
         ];
     }
 

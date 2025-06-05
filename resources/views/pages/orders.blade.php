@@ -252,8 +252,8 @@
                                                     Start: {{ number_format($order->start_count) }}
                                                 </span>
                                                 <span
-                                                    class="text-xs {{ $order->redis_status === 'completed' ? 'text-info' : ($order->redis_status === 'processing' ? '' : 'text-danger') }}">
-                                                    Redis: {{ $order->redis_status }}
+                                                    class="text-xs {{ $order->state->get('status') === 'completed' ? 'text-info' : ($order->state->get('status') === 'processing' ? '' : 'text-danger') }}">
+                                                    Redis: {{ $order->state->get('status') }}
                                                 </span>
                                                 <span
                                                     class="text-xs {{ $order->status === 'completed' ? 'text-info' : ($order->status === 'processing' ? '' : 'text-danger') }}">
@@ -268,8 +268,8 @@
                                         <td>
                                             <div class="d-flex px-2 py-1 flex-column">
                                                 <span class="text-secondary text-xs font-weight-bold">
-                                                    {{ number_format($order->redis_processed) }}/{{ number_format($order->redis_requested) }}
-                                                    ({{ number_format($order->redis_requested - $order->redis_processed) }})
+                                                    {{ number_format($order->state->get('processed')) }}/{{ number_format($order->state->get('requested')) }}
+                                                    ({{ number_format($order->state->get('requested') - $order->state->get('processed')) }})
                                                 </span>
                                                 <span class="text-xs text-info">
                                                     Processing: {{ number_format($order->redis_processing) }}

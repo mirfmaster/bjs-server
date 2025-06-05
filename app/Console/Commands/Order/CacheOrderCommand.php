@@ -60,8 +60,7 @@ class CacheOrderCommand extends Command
             ->limit(self::LIKE_LIMIT)
             ->get();
 
-        Cache::tags(['orders', 'list'])
-            ->put(self::CACHE_KEY_LIKE, $orders, $this->ttl);
+        Cache::put(self::CACHE_KEY_LIKE, $orders, $this->ttl);
 
         return $orders;
     }
@@ -77,8 +76,7 @@ class CacheOrderCommand extends Command
             ->limit(self::FOLLOW_LIMIT)
             ->get();
 
-        Cache::tags(['orders', 'list'])
-            ->put(self::CACHE_KEY_FOLLOW, $orders, $this->ttl);
+        Cache::put(self::CACHE_KEY_FOLLOW, $orders, $this->ttl);
 
         return $orders;
     }
@@ -87,36 +85,35 @@ class CacheOrderCommand extends Command
     {
         foreach ($orders as $order) {
             $id = $order->id;
-            $tags = ['orders', "order:{$id}"];
             $key = "order:{$id}:status";
 
             // if status key already exists, assume detail is cached
-            if (Cache::tags($tags)->has($key)) {
+            if (Cache::tags("order:$id")->has($key)) {
                 continue;
             }
 
-            $this->createDetailCache($order, $tags);
+            $this->createDetailCache($order);
         }
     }
 
-    private function createDetailCache(Order $order, array $tags): void
+    private function createDetailCache(Order $order): void
     {
         $id = $order->id;
         $requested = $order->requested;
 
-        Cache::tags($tags)
+        Cache::tags("order:$id")
             ->put("order:{$id}:status", $order->status, $this->ttl);
-        Cache::tags($tags)
+        Cache::tags("order:$id")
             ->put("order:{$id}:processing", 0, $this->ttl);
-        Cache::tags($tags)
+        Cache::tags("order:$id")
             ->put("order:{$id}:processed", 0, $this->ttl);
-        Cache::tags($tags)
+        Cache::tags("order:$id")
             ->put("order:{$id}:failed", 0, $this->ttl);
-        Cache::tags($tags)
+        Cache::tags("order:$id")
             ->put("order:{$id}:duplicate_interaction", 0, $this->ttl);
-        Cache::tags($tags)
+        Cache::tags("order:$id")
             ->put("order:{$id}:requested", $requested, $this->ttl);
-        Cache::tags($tags)
+        Cache::tags("order:$id")
             ->put("order:{$id}:fail_reason", '', $this->ttl);
     }
 }

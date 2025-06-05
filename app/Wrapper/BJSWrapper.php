@@ -292,7 +292,7 @@ class BJSWrapper
     //     // TODO: instead handling based on status, what about sync it from redis status -> db status -> bjs_status
     //     // STATUS MOVER SHOULD USE RASPI AS THE MOVER
     //     $this->order->setOrderID($order->id);
-    //     $redisData = $this->order->getOrderRedisKeys();
+    //     $redisData = $this->order->getCachedState();
     //
     //     $context = array_merge($baseContext, [
     //         'order_id' => $order->id,
@@ -432,7 +432,7 @@ class BJSWrapper
             }
 
             $this->order->setOrderID($order->id);
-            $redisData = $this->order->getOrderRedisKeys();
+            $redisData = $this->order->getCachedState();
             $ctx = array_merge($baseContext, [
                 'orders' => $orders->only([
                     'id',
@@ -483,7 +483,7 @@ class BJSWrapper
     private function processOrderStatus($order, array $baseContext): void
     {
         $this->order->setOrderID($order->id);
-        $redisData = $this->order->getOrderRedisKeys();
+        $redisData = $this->order->getCachedState();
 
         $context = array_merge($baseContext, [
             'order_id' => $order->id,
@@ -658,7 +658,7 @@ class BJSWrapper
     private function updateToProcessing($order, int $remainingCount): array
     {
         $this->order->setOrderID($order->id);
-        $redisData = $this->order->getOrderRedisKeys();
+        $redisData = $this->order->getCachedState();
 
         $order->processed = $redisData['processed'];
         $order->status = 'processing';
@@ -683,7 +683,7 @@ class BJSWrapper
     private function updateToCompleted($order, int $remainingCount): array
     {
         $this->order->setOrderID($order->id);
-        $redisData = $this->order->getOrderRedisKeys();
+        $redisData = $this->order->getCachedState();
 
         $order->processed = $redisData['processed'];
         $order->status = 'completed';
@@ -763,7 +763,7 @@ class BJSWrapper
 
         foreach ($orders as $order) {
             $this->order->setOrderID($order->id);
-            $redisData = $this->order->getOrderRedisKeys();
+            $redisData = $this->order->getCachedState();
 
             $context = array_merge($baseContext, [
                 'order_id' => $order->id,
@@ -915,7 +915,7 @@ class BJSWrapper
 
             // Set up order context and fetch current state
             $this->order->setOrderID($order->id);
-            $state = $this->order->getOrderRedisKeys();
+            $state = $this->order->getCachedState();
             $ctx = array_merge($baseContext, [
                 'order' => $order->only(['id', 'bjs_id', 'status']),
                 'state' => $state,

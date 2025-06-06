@@ -272,13 +272,14 @@
                                                     ({{ number_format($order->state->get('requested') - $order->state->get('processed')) }})
                                                 </span>
                                                 <span class="text-xs text-info">
-                                                    Processing: {{ number_format($order->redis_processing) }}
+                                                    Processing: {{ number_format($order->state->get('processing')) }}
                                                 </span>
                                                 <span class="text-xs text-danger">
-                                                    Failed: {{ number_format($order->redis_failed) }}
+                                                    Failed: {{ number_format($order->state->get('failed')) }}
                                                 </span>
                                                 <span class="text-xs text-warning">
-                                                    Duplicates: {{ number_format($order->redis_duplicate) }}
+                                                    Duplicates:
+                                                    {{ number_format($order->state->get('duplicate_interaction')) }}
                                                 </span>
                                             </div>
                                         </td>

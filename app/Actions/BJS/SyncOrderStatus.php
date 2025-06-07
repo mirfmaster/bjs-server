@@ -62,11 +62,11 @@ class SyncOrderStatus
             }
 
             return match ($state->status) {
+                OrderStatus::PROCESSING => $this->handleProcessing($order, $state),
                 OrderStatus::PARTIAL => $this->handlePartial($order, $state),
                 OrderStatus::CANCEL => $this->handleCancel($order, $state),
-                    // TODO: check INPROGRESS on worker affect the status or not
-                    // self::PROCESSING => true,
-                default => false,
+                OrderStatus::COMPLETED => $this->handleCompleted($order, $state),
+                default => Log::warning("STATUS STATE IS NOT RECOGNIZED: $state->status "),
             };
             Log::info('=================================');
         }
@@ -109,6 +109,52 @@ class SyncOrderStatus
             'status' => OrderStatus::CANCEL->value,
             'status_bjs' => OrderStatus::CANCEL->value,
             'partial_count' => $state->getRemains(),
+            'end_at' => now(),
+        ]);
+
+        Log::info('Succesfully updating status BJS');
+    }
+
+    private function handleProcessing(Order $order, OrderState $state)
+    {
+        // In case we do fetch profile by worker
+        // $resultOk = $this->bjsService->bjs->setStartCount($order->id);
+
+        $this->bjsService->bjs->setRemains($order->bjs_id, $state->getRemains());
+        $resultOk = $this->bjsService->bjs->changeStatus($order->bjs_id, OrderStatus::PROCESSING->value);
+        if (! $resultOk) {
+            Log::warning('Failed to update status BJS');
+
+            return;
+        }
+
+        $order->update([
+            'status' => OrderStatus::PROCESSING->value,
+            'status_bjs' => OrderStatus::PROCESSING->value,
+            'partial_count' => $state->getRemains(),
+            'end_at' => now(),
+        ]);
+
+        Log::info('Succesfully updating status BJS');
+    }
+
+    private function handleCompleted(Order $order, OrderState $state)
+    {
+        // In case we do fetch profile by worker
+        // $resultOk = $this->bjsService->bjs->setStartCount($order->id);
+
+        $this->bjsService->bjs->setRemains($order->bjs_id, $state->getCompletedRemains());
+        $resultOk = $this->bjsService->bjs->changeStatus($order->bjs_id, OrderStatus::COMPLETED->value);
+        if (! $resultOk) {
+            Log::warning('Failed to update status BJS');
+
+            return;
+        }
+
+        $order->update([
+            'status' => OrderStatus::COMPLETED->value,
+            'status_bjs' => OrderStatus::COMPLETED->value,
+            'partial_count' => $state->getCompletedRemains(),
             'end_at' => now(),
         ]);
 

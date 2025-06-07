@@ -24,9 +24,14 @@ class OrderState
 
     // public function processableS
 
-    public function getRemains()
+    public function getRemains(): int
     {
         return $this->processed - $this->requested;
+    }
+
+    public function getCompletedRemains(): int
+    {
+        return max(0, $this->processed - $this->requested);
     }
 
     // WORKER ORDERSTATE

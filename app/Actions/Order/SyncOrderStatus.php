@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions\BJS;
+namespace App\Actions\Order;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
@@ -11,70 +11,104 @@ use Illuminate\Support\Facades\Log;
 
 class SyncOrderStatus
 {
-    // TODO:
-    // - Check based on cached status
-    // - Update only if the BJS update success (consider: update bjs -> model -> cache)
-    // - Fetch all orders(even direct)
-    //  - first update based on the status
-    //   - If direct order && its done => update status to completed
-    //   - If BJS order
-    //
-    //
-    //   - Consider that order is updated by the worker
     public function __construct(
         public Order $order,
         public OrderCacheRepository $cache,
         public readonly BJSService $bjsService,
-    ) {}
+    ) {
+    }
 
+    // TODO: the actions only handle BJS status, extract get query, direct order handler to upper layer
     public function handle()
     {
-        Log::info('Syncing order status');
-        // TODO: add handler where status != status_bjs
         $orders = $this->order->query()
-            ->whereIn('status', ['inprogress', 'processing'])
+            ->whereIn('status_bjs', ['inprogress', 'processing'])
             ->orderBy('priority', 'desc')
+            // ->whereRaw('status <> status_bjs')
             // ->orderByRaw("array_position(ARRAY['like', 'comment', 'follow'], kind)")
             ->orderBy('created_at', 'asc')
-            ->limit(100)
+            ->limit(30)
             ->get();
+        Log::info('Syncing '.count($orders).' orders status');
 
         foreach ($orders as $order) {
-            $state = $this->cache->getState($order->id);
-            Log::info('Order processed', [
-                'order' => $order->only([
-                    'id',
-                    'kind',
-                    'requested',
-                    'bjs_id',
-                    'source',
-                    'status',
-                    'status_bjs',
-                ]),
-                'state' => $state,
-                'remains' => $state->getRemains(),
-            ]);
-
-            if (! $state) {
-                Log::warn("State is not exist $order->id");
-
-                continue;
-            }
-
-            return match ($state->status) {
-                OrderStatus::PROCESSING => $this->handleProcessing($order, $state),
-                OrderStatus::PARTIAL => $this->handlePartial($order, $state),
-                OrderStatus::CANCEL => $this->handleCancel($order, $state),
-                OrderStatus::COMPLETED => $this->handleCompleted($order, $state),
-                default => Log::warning("STATUS STATE IS NOT RECOGNIZED: $state->status "),
+            match ($order->source) {
+                'bjs' => $this->handleBJS($order),
+                'direct' => $this->handleDirect($order),
+                default => Log::warning("ORDER IS NOT RECOGNIZED: $order->source "),
             };
             Log::info('=================================');
         }
     }
 
-    // handlePartialOrder
-    // - Update BJS with try catch
-    // - Update model
+    private function handleBJS($order)
+    {
+        $state = $this->cache->getState($order->id);
+        Log::info('Order bjs processed', [
+            'order' => $order->only([
+                'id',
+                'kind',
+                'requested',
+                'bjs_id',
+                'source',
+                'status',
+                'status_bjs',
+            ]),
+            'state' => $state,
+            'remains' => $state->getRemains(),
+        ]);
+
+        if ($state->status == OrderStatus::UNKNOWN) {
+            Log::warning("State is not exist $order->id");
+
+            return;
+        }
+
+        match ($state->status) {
+            OrderStatus::INPROGRESS => $this->handleInProgress($order, $state),
+            OrderStatus::PROCESSING => $this->handleProcessing($order, $state),
+            OrderStatus::PARTIAL => $this->handlePartial($order, $state),
+            OrderStatus::CANCEL => $this->handleCancel($order, $state),
+            OrderStatus::COMPLETED => $this->handleCompleted($order, $state),
+            default => Log::warning('STATUS STATE IS NOT RECOGNIZED: '.$state->status->value),
+        };
+    }
+
+    private function handleDirect($order)
+    {
+        $state = $this->cache->getState($order->id);
+        Log::info('Order direct processed', [
+            'order' => $order->only([
+                'id',
+                'kind',
+                'requested',
+                'bjs_id',
+                'source',
+                'status',
+                'status_bjs',
+            ]),
+            'state' => $state,
+            'remains' => $state->getRemains(),
+        ]);
+
+        if (! $state) {
+            Log::warning("State is not exist $order->id");
+
+            return;
+        }
+
+        $order->update([
+            'status' => $state->status->value,
+            'status_bjs' => $state->status->value,
+            'partial_count' => $state->getRemains(),
+            'end_at' => now(),
+        ]);
+
+        Log::info('Succesfully updating status direct source');
+    }
+
+    // LIMIT of source function handler
+
     private function handlePartial(Order $order, OrderState $state)
     {
         $resultOk = $this->bjsService->bjs->setPartial($order->id, $state->getRemains());
@@ -115,6 +149,19 @@ class SyncOrderStatus
         Log::info('Succesfully updating status BJS');
     }
 
+    // Extra handler in case worker cannot update the status, this should be only updating the status
+    private function handleInProgress(Order $order, OrderState $state)
+    {
+        $remains = $state->getRemains();
+        if ($remains <= 0) {
+            Log::info('Order completed and yet the status is progress, moving to completed status');
+            // only update the status and let the handleCompleted handle the rest
+            $this->cache->setStatus($order->id, OrderStatus::COMPLETED->value);
+
+            return;
+        }
+    }
+
     private function handleProcessing(Order $order, OrderState $state)
     {
         // In case we do fetch profile by worker
@@ -132,7 +179,6 @@ class SyncOrderStatus
             'status' => OrderStatus::PROCESSING->value,
             'status_bjs' => OrderStatus::PROCESSING->value,
             'partial_count' => $state->getRemains(),
-            'end_at' => now(),
         ]);
 
         Log::info('Succesfully updating status BJS');
@@ -140,9 +186,6 @@ class SyncOrderStatus
 
     private function handleCompleted(Order $order, OrderState $state)
     {
-        // In case we do fetch profile by worker
-        // $resultOk = $this->bjsService->bjs->setStartCount($order->id);
-
         $this->bjsService->bjs->setRemains($order->bjs_id, $state->getCompletedRemains());
         $resultOk = $this->bjsService->bjs->changeStatus($order->bjs_id, OrderStatus::COMPLETED->value);
         if (! $resultOk) {

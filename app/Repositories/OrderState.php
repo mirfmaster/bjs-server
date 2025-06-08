@@ -20,18 +20,19 @@ class OrderState
         public readonly ?string $firstInteraction,
         public readonly int $requested,
         public readonly ?string $failReason,
-    ) {}
+    ) {
+    }
 
     // public function processableS
 
     public function getRemains(): int
     {
-        return $this->processed - $this->requested;
+        return $this->requested - $this->processed;
     }
 
     public function getCompletedRemains(): int
     {
-        return max(0, $this->processed - $this->requested);
+        return max(0, $this->requested - $this->processed);
     }
 
     // WORKER ORDERSTATE
@@ -92,7 +93,7 @@ class OrderState
     public static function cacheKeys(int|string $id): array
     {
         return array_map(
-            fn(string $suf) => "order:{$id}:{$suf}",
+            fn (string $suf) => "order:{$id}:{$suf}",
             self::cacheSuffixes()
         );
     }

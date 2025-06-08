@@ -240,8 +240,8 @@
                                         </td>
                                         <td>
                                             <div class="d-flex px-2 py-1">
-                                                <a href="{{ $order->getAnonymizedUrl() }}" target="_blank"
-                                                    class="text-primary text-xs font-weight-bold">
+                                                <a href="{{ $order->getInstagramUrl() }}" rel="noreferrer nofollow"
+                                                    target="_blank" class="text-primary text-xs font-weight-bold">
                                                     {{ $order->username }}
                                                 </a>
                                             </div>

@@ -23,19 +23,24 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/bjs_fetch.log'));
 
-        $schedule->job(new SyncBJSOrders())
+        $schedule->command('order:sync-status')
             ->everyThreeMinutes()
             ->withoutOverlapping()
-            ->when(function () {
-                $enabled = (bool) Redis::get('system:global-work');
-                Log::info('state', ['system:global-work' => $enabled ? 'yes' : 'no']);
+            ->appendOutputTo(storage_path('logs/sync-status.log'));
 
-                if (! $enabled) {
-                    Log::warning('Global work disabled; skipping SyncBJSOrders job.');
-                }
-
-                return $enabled;
-            });
+        // $schedule->job(new SyncBJSOrders())
+        //     ->everyThreeMinutes()
+        //     ->withoutOverlapping()
+        //     ->when(function () {
+        //         $enabled = (bool) Redis::get('system:global-work');
+        //         Log::info('state', ['system:global-work' => $enabled ? 'yes' : 'no']);
+        //
+        //         if (! $enabled) {
+        //             Log::warning('Global work disabled; skipping SyncBJSOrders job.');
+        //         }
+        //
+        //         return $enabled;
+        //     });
 
         // $schedule->command('redispo:move-users')->daily()->appendOutputTo(storage_path('logs/scheduler.log'));
 
@@ -76,7 +81,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__ . '/Commands');
+        $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
     }

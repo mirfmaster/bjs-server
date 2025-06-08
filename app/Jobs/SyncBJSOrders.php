@@ -85,8 +85,8 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
             $currentTotal = $stats->total_requested;
             // $bjsWrapper->fetchLikeOrder($watchlistLike);
             // $bjsWrapper->fetchFollowOrder($watchlistFollow, $currentTotal);
-            $bjsWrapper->processOrders();
-            $bjsWrapper->syncOrdersBJS();
+            // $bjsWrapper->processOrders();
+            // $bjsWrapper->syncOrdersBJS();
             // $bjsWrapper->handleServicesAvailability();
 
             // NOTE: DEPRECATED SINCE ITS NOT WORTH THE PENNY
@@ -113,7 +113,7 @@ class SyncBJSOrders implements ShouldBeUnique, ShouldQueue
                     'output' => trim($output),
                 ]);
             } catch (\Exception $e) {
-                Log::error('Error processing Telegram updates: ' . $e->getMessage(), [
+                Log::error('Error processing Telegram updates: '.$e->getMessage(), [
                     'exception' => $e,
                 ]);
             }

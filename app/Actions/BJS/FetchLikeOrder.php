@@ -18,7 +18,7 @@ class FetchLikeOrder
         Log::info('Getting orders BJS', ['serviceID' => $serviceID, 'status' => $status]);
         $orders = $service->getOrdersData($serviceID, $status);
         $orders = $orders->sortBy('created');
-        Log::info('Processing orders: ' . count($orders));
+        Log::info('Processing orders: '.count($orders));
 
         foreach ($orders as $order) {
             Log::info('processing order like: ', [
@@ -63,7 +63,7 @@ class FetchLikeOrder
 
                 // Add daily limit check
                 if (! $this->canProcessLikeOrder($getInfo->media_id)) {
-                    Log::warning('Daily limit reached for media_id: ' . $getInfo->media_id . ' | limit: ' . self::DAILY_MAX_ORDER);
+                    Log::warning('Daily limit reached for media_id: '.$getInfo->media_id.' | limit: '.self::DAILY_MAX_ORDER);
                     $service->bjs->cancelOrder($order->id);
                     $service->bjs->addCancelReason($order->id, 'Daily limit reached');
 
@@ -126,36 +126,37 @@ class FetchLikeOrder
         throw_if(! $auth, new \Exception('Redispo auth configuration is missing'));
 
         try {
-            // Make API request
             $response = Http::withHeaders([
                 'authorization' => $auth,
-            ])->get('http://172.104.183.180:12091/v2/proxy-ig/media-info-proxyv2', [
-                'media_shortcode' => $code,
-                'source' => 'belanjasosmed',
-            ]);
+            ])->get(
+                'http://172.104.183.180:12091/v2/proxy-ig/media-info-proxyv2',
+                [
+                    'media_shortcode' => $code,
+                    'source' => 'belanjasosmed',
+                ]
+            );
 
-            // Handle errors
             if (! $response->successful() || $response->json('error')) {
-                throw new \Exception($response->json('message') ?? 'Error response from server');
+                throw new \Exception(
+                    $response->json('message') ?? 'Error response from server'
+                );
             }
 
             $data = $response->json('data');
-            if (empty($data['media'])) {
-                throw new \Exception('Media data not found');
-            }
+
+            throw_if(empty($data['media']), new \Exception('Media data not found'));
 
             $media = $data['media'];
-
-            // Construct response
+            $owner = $media['user'] ?? $media['owner'];
             $result = [
                 'error' => false,
                 'found' => true,
                 'code' => $code,
                 'media_id' => $media['pk'],
-                'owner_id' => $media['owner']['id'],
-                'owner_username' => $media['owner']['username'],
-                'owner_pk_id' => $media['owner']['pk_id'],
-                'owner_is_private' => $media['owner']['is_private'],
+                'owner_id' => $owner['id'],
+                'owner_username' => $owner['username'],
+                'owner_pk_id' => $owner['pk_id'],
+                'owner_is_private' => $owner['is_private'],
                 'like_and_view_counts_disabled' => $media['like_and_view_counts_disabled'],
                 'comment_count' => $media['comment_count'],
                 'like_count' => $media['like_count'],

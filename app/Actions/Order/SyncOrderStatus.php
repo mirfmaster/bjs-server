@@ -16,8 +16,7 @@ class SyncOrderStatus
         public Order $order,
         public OrderCacheRepository $cache,
         public readonly BJSService $bjsService,
-    ) {
-    }
+    ) {}
 
     // TODO: the actions only handle BJS status, extract get query, direct order handler to upper layer
     public function handle()
@@ -38,7 +37,7 @@ class SyncOrderStatus
             ->limit(10)
             ->get();
         $orders = $like->merge($follow);
-        Log::info('Syncing '.count($orders).' orders status');
+        Log::info('Syncing ' . count($orders) . ' orders status');
 
         foreach ($orders as $order) {
             match ($order->source) {
@@ -79,7 +78,7 @@ class SyncOrderStatus
             OrderStatus::PARTIAL => $this->handlePartial($order, $state),
             OrderStatus::CANCEL => $this->handleCancel($order, $state),
             OrderStatus::COMPLETED => $this->handleCompleted($order, $state),
-            default => Log::warning('STATUS STATE IS NOT RECOGNIZED: '.$state->status->value),
+            default => Log::warning('STATUS STATE IS NOT RECOGNIZED: ' . $state->status->value),
         };
     }
 
@@ -207,6 +206,7 @@ class SyncOrderStatus
                 if ($remains <= 0) {
                     Log::info("Model-only: {$order->id} inprogress→completed");
                     $order->update([
+                        'processed' => $state->processed,
                         'status' => OrderStatus::COMPLETED->value,
                         'status_bjs' => OrderStatus::COMPLETED->value,
                         'partial_count' => $state->getCompletedRemains(),
@@ -221,6 +221,7 @@ class SyncOrderStatus
                 )->format('Y-m-d H:i:s');
                 Log::info("Model-only: {$order->id} processing");
                 $order->update([
+                    'processed' => $state->processed,
                     'started_at' => $ts,
                     'status' => OrderStatus::PROCESSING->value,
                     'status_bjs' => OrderStatus::PROCESSING->value,
@@ -231,6 +232,7 @@ class SyncOrderStatus
             case OrderStatus::PARTIAL:
                 Log::info("Model-only: {$order->id} partial");
                 $order->update([
+                    'processed' => $state->processed,
                     'status' => OrderStatus::PARTIAL->value,
                     'status_bjs' => OrderStatus::PARTIAL->value,
                     'partial_count' => $remains,
@@ -241,6 +243,7 @@ class SyncOrderStatus
             case OrderStatus::CANCEL:
                 Log::info("Model-only: {$order->id} cancel");
                 $order->update([
+                    'processed' => $state->processed,
                     'status' => OrderStatus::CANCEL->value,
                     'status_bjs' => OrderStatus::CANCEL->value,
                     'partial_count' => $remains,
@@ -251,6 +254,7 @@ class SyncOrderStatus
             case OrderStatus::COMPLETED:
                 Log::info("Model-only: {$order->id} completed");
                 $order->update([
+                    'processed' => $state->processed,
                     'status' => OrderStatus::COMPLETED->value,
                     'status_bjs' => OrderStatus::COMPLETED->value,
                     'partial_count' => $state->getCompletedRemains(),
@@ -261,7 +265,7 @@ class SyncOrderStatus
             default:
                 Log::warning(
                     "Model-only: {$order->id} unhandled status "
-                        .$state->status->value
+                        . $state->status->value
                 );
         }
     }

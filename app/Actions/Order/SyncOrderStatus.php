@@ -112,7 +112,7 @@ class SyncOrderStatus
 
     private function handlePartial(Order $order, OrderState $state)
     {
-        $resultOk = $this->bjsService->bjs->setPartial($order->id, $state->getRemains());
+        $resultOk = $this->bjsService->bjs->setPartial($order->bjs_id, $state->getRemains());
         if (! $resultOk) {
             Log::warning('Failed to update status BJS as Partial');
 
@@ -131,14 +131,14 @@ class SyncOrderStatus
 
     private function handleCancel(Order $order, OrderState $state)
     {
-        $resultOk = $this->bjsService->bjs->cancelOrder($order->id);
+        $resultOk = $this->bjsService->bjs->cancelOrder($order->bjs_id);
         if (! $resultOk) {
             Log::warning('Failed to update status BJS');
 
             return;
         }
         // TODO: check fail reason
-        // $this->bjsService->bjs->addCancelReason($order->id, $state->failReason);
+        // $this->bjsService->bjs->addCancelReason($order->bjs_id, $state->failReason);
 
         $order->update([
             'status' => OrderStatus::CANCEL->value,
@@ -179,7 +179,7 @@ class SyncOrderStatus
             $state->firstInteraction
         )->format('Y-m-d H:i:s');
         $order->update([
-            'started_at' => $$ts,
+            'started_at' => $ts,
             'status' => OrderStatus::PROCESSING->value,
             'status_bjs' => OrderStatus::PROCESSING->value,
             'partial_count' => $state->getRemains(),

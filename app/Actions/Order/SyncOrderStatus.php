@@ -22,14 +22,22 @@ class SyncOrderStatus
     // TODO: the actions only handle BJS status, extract get query, direct order handler to upper layer
     public function handle()
     {
-        $orders = $this->order->query()
+        $like = $this->order->query()
             ->whereIn('status_bjs', ['inprogress', 'processing'])
             ->orderBy('priority', 'desc')
-            // ->whereRaw('status <> status_bjs')
-            // ->orderByRaw("array_position(ARRAY['like', 'comment', 'follow'], kind)")
+            ->where('kind', 'like')
             ->orderBy('created_at', 'asc')
-            ->limit(30)
+            // TODO: extract this into single constants
+            ->limit(20)
             ->get();
+        $follow = $this->order->query()
+            ->whereIn('status_bjs', ['inprogress', 'processing'])
+            ->orderBy('priority', 'desc')
+            ->where('kind', 'follow')
+            ->orderBy('created_at', 'asc')
+            ->limit(10)
+            ->get();
+        $orders = $like->merge($follow);
         Log::info('Syncing '.count($orders).' orders status');
 
         foreach ($orders as $order) {
@@ -166,7 +174,7 @@ class SyncOrderStatus
     private function handleProcessing(Order $order, OrderState $state)
     {
         // In case we do fetch profile by worker
-        // $resultOk = $this->bjsService->bjs->setStartCount($order->id);
+        // $resultOk = $this->bjsService->bjs->setStartCount($order->bjs_id);
 
         $this->bjsService->bjs->setRemains($order->bjs_id, $state->getRemains());
         $resultOk = $this->bjsService->bjs->changeStatus($order->bjs_id, OrderStatus::PROCESSING->value);

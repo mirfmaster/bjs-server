@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Repositories\OrderCacheRepository;
 use App\Repositories\OrderState;
 use App\Services\BJSService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class SyncOrderStatus
@@ -174,8 +175,11 @@ class SyncOrderStatus
 
             return;
         }
-
+        $ts = Carbon::createFromTimestamp(
+            $state->firstInteraction
+        )->format('Y-m-d H:i:s');
         $order->update([
+            'started_at' => $$ts,
             'status' => OrderStatus::PROCESSING->value,
             'status_bjs' => OrderStatus::PROCESSING->value,
             'partial_count' => $state->getRemains(),

@@ -17,7 +17,7 @@ class OrderState
         public readonly int $processed,
         public readonly int $duplicateInteraction,
         public readonly int $failed,
-        public readonly ?string $firstInteraction,
+        public readonly ?int $firstInteraction,
         public readonly int $requested,
         public readonly ?string $failReason,
     ) {
@@ -115,7 +115,7 @@ class OrderState
             processed: (int) $prd,
             duplicateInteraction: (int) $dup,
             failed: (int) $fld,
-            firstInteraction: $first,
+            firstInteraction: (int) $first,
             requested: (int) $req,
             failReason: $failReason,
         );

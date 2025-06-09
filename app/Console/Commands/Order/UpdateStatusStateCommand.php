@@ -172,6 +172,8 @@ SIG;
             $this->line(''); // blank line between orders
         }
 
+        $this->call('order:cache');
+
         return Command::SUCCESS;
     }
 }

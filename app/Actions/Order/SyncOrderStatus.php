@@ -83,7 +83,7 @@ class SyncOrderStatus
         };
     }
 
-    private function handleDirect($order)
+    private function handleDirect(Order $order)
     {
         $state = $this->cache->getState($order->id);
         Log::info('Order direct processed', [
@@ -97,122 +97,172 @@ class SyncOrderStatus
                 'status_bjs',
             ]),
             'state' => $state,
-            'remains' => $state->getRemains(),
+            'remains' => $state?->getRemains(),
         ]);
 
         if (! $state) {
-            Log::warning("State is not exist $order->id");
+            Log::warning("State does not exist for {$order->id}");
 
             return;
         }
 
-        $order->update([
-            'status' => $state->status->value,
-            'status_bjs' => $state->status->value,
-            'partial_count' => $state->getRemains(),
-            'end_at' => now(),
-        ]);
+        $this->updateModelOnly($order, $state);
 
-        Log::info('Succesfully updating status direct source');
+        Log::info('Successfully updated direct‐source model only');
     }
-
-    // LIMIT of source function handler
 
     private function handlePartial(Order $order, OrderState $state)
     {
-        $resultOk = $this->bjsService->bjs->setPartial($order->bjs_id, $state->getRemains());
-        if (! $resultOk) {
-            Log::warning('Failed to update status BJS as Partial');
+        $ok = $this->bjsService->bjs
+            ->setPartial($order->bjs_id, $state->getRemains());
+        if (! $ok) {
+            Log::warning('Failed to set BJS Partial');
 
             return;
         }
 
-        $order->update([
-            'status' => OrderStatus::PARTIAL->value,
-            'status_bjs' => OrderStatus::PARTIAL->value,
-            'partial_count' => $state->getRemains(),
-            'end_at' => now(),
-        ]);
+        $this->updateModelOnly($order, $state);
 
-        Log::info('Succesfully updating status BJS');
+        Log::info('Successfully updated BJS + model only for Partial');
     }
 
     private function handleCancel(Order $order, OrderState $state)
     {
-        $resultOk = $this->bjsService->bjs->cancelOrder($order->bjs_id);
-        if (! $resultOk) {
-            Log::warning('Failed to update status BJS');
+        $ok = $this->bjsService->bjs->cancelOrder($order->bjs_id);
+        if (! $ok) {
+            Log::warning('Failed to cancel in BJS');
 
             return;
         }
-        // TODO: check fail reason
-        // $this->bjsService->bjs->addCancelReason($order->bjs_id, $state->failReason);
 
-        $order->update([
-            'status' => OrderStatus::CANCEL->value,
-            'status_bjs' => OrderStatus::CANCEL->value,
-            'partial_count' => $state->getRemains(),
-            'end_at' => now(),
-        ]);
+        $this->updateModelOnly($order, $state);
 
-        Log::info('Succesfully updating status BJS');
+        Log::info('Successfully updated BJS + model only for Cancel');
     }
 
-    // Extra handler in case worker cannot update the status, this should be only updating the status
     private function handleInProgress(Order $order, OrderState $state)
     {
+        // on InProgress we only update the model _if_ it’s time
+        $this->updateModelOnly($order, $state);
         $remains = $state->getRemains();
         if ($remains <= 0) {
-            Log::info('Order completed and yet the status is progress, moving to completed status');
-            // only update the status and let the handleCompleted handle the rest
-            $this->cache->setStatus($order->id, OrderStatus::COMPLETED->value);
-
-            return;
+            $this->cache->setStatus(
+                $order->id,
+                OrderStatus::COMPLETED->value
+            );
+            Log::info(
+                "Order {$order->id} inprogress→completed (cache only)"
+            );
         }
     }
 
     private function handleProcessing(Order $order, OrderState $state)
     {
-        // In case we do fetch profile by worker
-        // $resultOk = $this->bjsService->bjs->setStartCount($order->bjs_id);
-
-        $this->bjsService->bjs->setRemains($order->bjs_id, $state->getRemains());
-        $resultOk = $this->bjsService->bjs->changeStatus($order->bjs_id, OrderStatus::PROCESSING->value);
-        if (! $resultOk) {
-            Log::warning('Failed to update status BJS');
+        $this->bjsService->bjs->setRemains(
+            $order->bjs_id,
+            $state->getRemains()
+        );
+        $ok = $this->bjsService->bjs
+            ->changeStatus($order->bjs_id, OrderStatus::PROCESSING->value);
+        if (! $ok) {
+            Log::warning('Failed to change status to Processing in BJS');
 
             return;
         }
-        $ts = Carbon::createFromTimestamp(
-            $state->firstInteraction
-        )->format('Y-m-d H:i:s');
-        $order->update([
-            'started_at' => $ts,
-            'status' => OrderStatus::PROCESSING->value,
-            'status_bjs' => OrderStatus::PROCESSING->value,
-            'partial_count' => $state->getRemains(),
-        ]);
 
-        Log::info('Succesfully updating status BJS');
+        $this->updateModelOnly($order, $state);
+
+        Log::info('Successfully updated BJS + model only for Processing');
     }
 
     private function handleCompleted(Order $order, OrderState $state)
     {
-        $this->bjsService->bjs->setRemains($order->bjs_id, $state->getCompletedRemains());
-        $resultOk = $this->bjsService->bjs->changeStatus($order->bjs_id, OrderStatus::COMPLETED->value);
-        if (! $resultOk) {
-            Log::warning('Failed to update status BJS');
+        $this->bjsService->bjs->setRemains(
+            $order->bjs_id,
+            $state->getCompletedRemains()
+        );
+        $ok = $this->bjsService->bjs
+            ->changeStatus($order->bjs_id, OrderStatus::COMPLETED->value);
+        if (! $ok) {
+            Log::warning('Failed to change status to Completed in BJS');
 
             return;
         }
 
-        $order->update([
-            'status' => OrderStatus::COMPLETED->value,
-            'status_bjs' => OrderStatus::COMPLETED->value,
-            'partial_count' => $state->getCompletedRemains(),
-            'end_at' => now(),
-        ]);
+        $this->updateModelOnly($order, $state);
 
-        Log::info('Succesfully updating status BJS');
+        Log::info('Successfully updated BJS + model only for Completed');
+    }
+
+    /**
+     * Apply _only_ the Eloquent‐model updates for a given state.
+     * Does _not_ call BJS at all.
+     */
+    public function updateModelOnly(Order $order, OrderState $state): void
+    {
+        $remains = $state->getRemains();
+
+        switch ($state->status) {
+            case OrderStatus::INPROGRESS:
+                if ($remains <= 0) {
+                    Log::info("Model-only: {$order->id} inprogress→completed");
+                    $order->update([
+                        'status' => OrderStatus::COMPLETED->value,
+                        'status_bjs' => OrderStatus::COMPLETED->value,
+                        'partial_count' => $state->getCompletedRemains(),
+                        'end_at' => now(),
+                    ]);
+                }
+                break;
+
+            case OrderStatus::PROCESSING:
+                $ts = Carbon::createFromTimestamp(
+                    $state->firstInteraction
+                )->format('Y-m-d H:i:s');
+                Log::info("Model-only: {$order->id} processing");
+                $order->update([
+                    'started_at' => $ts,
+                    'status' => OrderStatus::PROCESSING->value,
+                    'status_bjs' => OrderStatus::PROCESSING->value,
+                    'partial_count' => $remains,
+                ]);
+                break;
+
+            case OrderStatus::PARTIAL:
+                Log::info("Model-only: {$order->id} partial");
+                $order->update([
+                    'status' => OrderStatus::PARTIAL->value,
+                    'status_bjs' => OrderStatus::PARTIAL->value,
+                    'partial_count' => $remains,
+                    'end_at' => now(),
+                ]);
+                break;
+
+            case OrderStatus::CANCEL:
+                Log::info("Model-only: {$order->id} cancel");
+                $order->update([
+                    'status' => OrderStatus::CANCEL->value,
+                    'status_bjs' => OrderStatus::CANCEL->value,
+                    'partial_count' => $remains,
+                    'end_at' => now(),
+                ]);
+                break;
+
+            case OrderStatus::COMPLETED:
+                Log::info("Model-only: {$order->id} completed");
+                $order->update([
+                    'status' => OrderStatus::COMPLETED->value,
+                    'status_bjs' => OrderStatus::COMPLETED->value,
+                    'partial_count' => $state->getCompletedRemains(),
+                    'end_at' => now(),
+                ]);
+                break;
+
+            default:
+                Log::warning(
+                    "Model-only: {$order->id} unhandled status "
+                        .$state->status->value
+                );
+        }
     }
 }

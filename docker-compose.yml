@@ -20,7 +20,7 @@ services:
             retries: 3
 
     redis:
-        image: redis:7-alpine
+        image: redis:alpine
         container_name: bjs_redis
         hostname: redis
         restart: unless-stopped

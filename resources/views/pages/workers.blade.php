@@ -331,9 +331,7 @@
                                     <option value="">Select Status</option>
                                     <option value="active">Active</option>
                                     <option value="relogin">Relogin</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="suspended">Suspended</option>
-                                    <option value="disabled">Disabled</option>
+                                    <option value="challenge_required">Challenge Required</option>
                                 </select>
                             </div>
                             <div class="form-group mb-3">
@@ -415,7 +413,6 @@
         // Close the modal
         var modal = bootstrap.Modal.getInstance(document.getElementById('bulkActionModal'));
         modal.hide();
-        });
         });
     </script>
 @endpush

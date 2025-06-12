@@ -26,8 +26,6 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        $this->orderService->updateCache();
-
         $perPage = $request->input('per_page', 10);
         $search = $request->input('search');
 
@@ -124,6 +122,10 @@ class OrderController extends Controller
             'statistics' => [
                 'order' => $orderStats,
                 'leftOrders' => $leftOrders,
+            ],
+            'system' => [
+                'counterFollow' => Cache::get('system:follow_counter', 0),
+                'counterLike' => Cache::get('system:like_counter', 0),
             ],
         ]);
     }

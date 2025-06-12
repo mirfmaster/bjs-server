@@ -9,17 +9,22 @@
                 <div class="card">
                     <div class="card-body p-3">
                         <div class="row">
-                            <div class="col-8">
-                                <div class="numbers">
-                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Completed Orders</p>
-                                    <h5 class="font-weight-bolder">
-                                        {{ number_format($orders['completed']) }}
-                                    </h5>
-                                    <p class="mb-0">
-                                        <span class="text-success text-sm font-weight-bolder"><br></span>
-                                    </p>
+                            <div class="col-8 d-flex flex-column justify-content-end">
+                                <p class="text-sm mb-2 text-uppercase font-weight-bold">Orders</p>
+
+                                <div class="d-flex flex-column">
+                                    <span class="font-weight-bolder d-block mb-0">
+                                        Completed: {{ number_format($orders['completed']) }}
+                                    </span>
+                                    <span class="font-weight-bolder d-block mb-0">
+                                        Canceled: {{ number_format($orders['canceled']) }}
+                                    </span>
+                                    <span class="font-weight-bolder d-block mb-0">
+                                        Partial: {{ number_format($orders['partial']) }}
+                                    </span>
                                 </div>
                             </div>
+
                             <div class="col-4 text-end">
                                 <div class="icon icon-shape bg-gradient-primary shadow-primary text-center rounded-circle">
                                     <i class="ni ni-money-coins text-lg opacity-10" aria-hidden="true"></i>
@@ -59,17 +64,16 @@
                 <div class="card">
                     <div class="card-body p-3">
                         <div class="row">
-                            <div class="col-8">
-                                <div class="numbers">
-                                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Cancelled Order</p>
-                                    <h5 class="font-weight-bolder">
-                                        {{ number_format($orders['canceled']) }}
-                                    </h5>
-                                    <p class="mb-0">
-                                        <span
-                                            class="text-danger text-sm font-weight-bolder">{{ number_format($orders['partial']) }}</span>
-                                        Partialled
-                                    </p>
+                            <div class="col-8 d-flex flex-column justify-content-end">
+                                <p class="text-sm mb-2 text-uppercase font-weight-bold">Daily Counters</p>
+
+                                <div class="d-flex flex-column">
+                                    <span class="font-weight-bolder d-block mb-0">
+                                        Like: {{ number_format($system['counterLike']) }}
+                                    </span>
+                                    <span class="font-weight-bolder d-block mb-0">
+                                        Follow: {{ number_format($system['counterFollow']) }}
+                                    </span>
                                 </div>
                             </div>
                             <div class="col-4 text-end">

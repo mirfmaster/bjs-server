@@ -6,6 +6,7 @@ use App\Jobs\GetUserIndofoll;
 use App\Jobs\SyncBJSOrders;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -43,7 +44,13 @@ class Kernel extends ConsoleKernel
         //     });
 
         // $schedule->command('redispo:move-users')->daily()->appendOutputTo(storage_path('logs/scheduler.log'));
+        $schedule->call(function () {
+            Cache::set('system:follow_counter', 0);
+            Cache::set('system:like_counter', 0);
+        })
+            ->daily();
 
+        // TODO: remove these commands
         // Delete hold state for 'like' every 45 minutes
         $schedule->command('redispo:delete-hold-state like')
             ->cron('*/45 * * * *')
@@ -81,7 +88,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

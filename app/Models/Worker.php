@@ -68,7 +68,7 @@ class Worker extends Model
      * @var array
      */
     protected $hidden = [
-        'password',
+        // 'password',
     ];
 
     public function getRouteKeyName(): string

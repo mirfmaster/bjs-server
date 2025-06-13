@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\WorkerController;
+use App\Http\Controllers\API\WorkerController as APIWorkerController;
 use App\Http\Controllers\OrderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -32,4 +33,11 @@ Route::prefix('order')->group(function () {
 });
 Route::prefix('telegram')->group(function () {
     Route::get('/webhook-tiktok', [TelegramWebhookController::class, 'handleWebhook']);
+});
+
+Route::prefix('v2')->group(function () {
+    Route::post('workers/upsert', [APIWorkerController::class, 'upsert'])
+        ->name('workers.upsert');
+
+    Route::apiResource('workers', APIWorkerController::class);
 });

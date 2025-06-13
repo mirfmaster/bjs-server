@@ -70,4 +70,9 @@ class Worker extends Model
     protected $hidden = [
         'password',
     ];
+
+    public function getRouteKeyName(): string
+    {
+        return 'username';
+    }
 }

@@ -38,6 +38,7 @@ Route::prefix('telegram')->group(function () {
 Route::prefix('v2')->group(function () {
     Route::post('workers/upsert', [APIWorkerController::class, 'upsert'])
         ->name('workers.upsert');
+    Route::get('workers/executors', [APIWorkerController::class, 'getExecutors']);
 
     Route::apiResource('workers', APIWorkerController::class);
 });

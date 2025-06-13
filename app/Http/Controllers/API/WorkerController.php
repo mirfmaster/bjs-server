@@ -14,9 +14,31 @@ class WorkerController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        //
+        $status = $request->get('status');
+        $limit = (int) $request->get('limit', 4);
+        $random = filter_var(
+            $request->get('random', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        $query = Worker::query();
+
+        if ($status !== null) {
+            $query->where('status', $status);
+        }
+
+        if ($random) {
+            $query->inRandomOrder();
+        }
+
+        $workers = $query->limit($limit)->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $workers,
+        ], 200);
     }
 
     /**
@@ -91,8 +113,30 @@ class WorkerController extends Controller
         ], 200);
     }
 
-    public function getRelogin(Request $request)
+    public function getExecutors(Request $request): JsonResponse
     {
-        $limit = $request->get('limit', 4);
+        $limit = (int) $request->get('limit', 4);
+        $f = 24 * 60;
+        $l = 6 * 60;
+
+        $workers = Worker::where('status', 'active')
+            ->where(function ($q) use ($f) {
+                $threshold = now()->subMinutes($f);
+                $q->whereNull('warned_follow_at')
+                    ->orWhere('warned_follow_at', '<', $threshold);
+            })
+            ->where(function ($q) use ($l) {
+                $threshold = now()->subMinutes($l);
+                $q->whereNull('warned_like_at')
+                    ->orWhere('warned_like_at', '<', $threshold);
+            })
+            ->inRandomOrder()
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $workers,
+        ], 200);
     }
 }

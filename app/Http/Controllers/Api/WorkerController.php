@@ -180,6 +180,8 @@ class WorkerController extends Controller
             ], 404);
         }
 
+        $worker->makeVisible('password');
+
         return response()->json([
             'success' => true,
             'data' => $worker,

@@ -67,6 +67,9 @@ class OrderState
 
     public function getCompletionStatus(): OrderStatus
     {
+        if ($this->processed == 0 && $this->processing == 0) {
+            return OrderStatus::CANCEL;
+        }
         if ($this->processed >= $this->requested) {
             return OrderStatus::COMPLETED;
         }

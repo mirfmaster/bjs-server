@@ -59,14 +59,15 @@ class ForceCompletionCommand extends Command
         $repo = app(OrderCacheRepository::class);
 
         foreach ($ids as $id) {
+            $client->authenticate();
             $order = Order::where('bjs_id', $id)->first();
             if (! $order) {
-                $this->info('Order is not found, skipping');
+                $this->info("Order $id is not found, skipping");
 
                 continue;
             }
             if ($order->status == 'cancel') {
-                $this->info('Order is cancelled, skipping');
+                $this->info("Order $id is already cancelled, skipping");
 
                 continue;
             }
@@ -93,9 +94,10 @@ class ForceCompletionCommand extends Command
 
                 $order->partial_count = $state->getRemains();
                 $order->status = $state->getCompletionStatus();
+                $order->status_bjs = $state->getCompletionStatus();
                 $order->save();
 
-                $this->info('✔ Updating status order to '.$status->value);
+                $this->info('✔ Updating status order to ' . $status->value);
             } catch (\Throwable $e) {
                 $this->error("✖ Failed to cancel order {$id}: {$e->getMessage()}");
             }

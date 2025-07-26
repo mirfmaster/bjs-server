@@ -155,6 +155,15 @@ return [
             'database' => env('REDIS_DB', '0'),
         ],
 
+        'redispo' => [
+            'url' => env('REDISPO_REDIS_URL'),
+            'host' => env('REDISPO_REDIS_HOST', '127.0.0.1'),
+            'username' => env('REDISPO_REDIS_USERNAME'),
+            'password' => env('REDISPO_REDIS_PASSWORD'),
+            'port' => env('REDISPO_REDIS_PORT', '6379'),
+            'database' => env('REDISPO_REDIS_DB', '0'),
+        ],
+
         'cache' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),

@@ -16,58 +16,78 @@ class ForceCompletionCommand extends Command
      * @var string
      */
     protected $signature = 'order:force-completion
-                            {ids* : One or more BJS order IDs to cancel}';
+                            {ids?* : One or more BJS order IDs to cancel}
+                            {--all : Cancel all orders with status inprogress|processing}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Cancel one or more BJS orders and force completing order';
+    protected $description =
+        'Cancel one or more BJS orders (or all in-progress) and force completion';
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
-    public function handle()
+    public function handle(): int
     {
-        // Resolve the BJS client and authenticate
+        $all = $this->option('all');
+        $ids = $this->argument('ids');
+
+        // Validation: either --all or at least one id
+        if (! $all && empty($ids)) {
+            $this->error('You must provide one or more IDs, or pass the --all flag.');
+
+            return self::FAILURE;
+        }
+
+        if ($all && ! empty($ids)) {
+            $this->error('You cannot pass IDs and --all at the same time.');
+
+            return self::FAILURE;
+        }
+
+        // If --all, pull all inprogress|processing orders
+        if ($all) {
+            $this->info('Fetching all inprogress|processing orders…');
+            $ids = Order::whereIn('status', ['inprogress', 'processing'])
+                ->pluck('bjs_id')
+                ->filter()     // drop null/empty
+                ->unique()
+                ->toArray();
+
+            if (empty($ids)) {
+                $this->info('No inprogress or processing orders found.');
+
+                return self::SUCCESS;
+            }
+
+            $this->info('Found '.count($ids).' orders to cancel.');
+        }
+
+        // Authenticate once
         /** @var BJSClient $client */
         $client = app(BJSClient::class);
         $this->info('Authenticating to BJS service…');
-
         if (! $client->authenticate()) {
             $this->error('Failed to authenticate to BJS server.');
 
             return self::FAILURE;
         }
 
-        // Grab the IDs from the CLI
-        $ids = $this->argument('ids');
-
-        if (empty($ids)) {
-            $this->error('No order IDs provided. At least one is required.');
-
-            return self::FAILURE;
-        }
-
         /** @var CancelBJSOrderAction $action */
         $action = app(CancelBJSOrderAction::class);
-
         /** @var OrderCacheRepository $repo */
         $repo = app(OrderCacheRepository::class);
 
         foreach ($ids as $id) {
-            $client->authenticate();
             $order = Order::where('bjs_id', $id)->first();
             if (! $order) {
-                $this->info("Order $id is not found, skipping");
+                $this->warn("Order {$id} not found in DB; skipping.");
 
                 continue;
             }
-            if ($order->status == 'cancel') {
-                $this->info("Order $id is already cancelled, skipping");
+
+            if ($order->status === 'cancel') {
+                $this->info("Order {$id} already cancelled; skipping.");
 
                 continue;
             }
@@ -81,32 +101,34 @@ class ForceCompletionCommand extends Command
 
             try {
                 $this->info("Cancelling order {$id}…");
-                $result = $action->handle($client, $id);
-                if (! $result) {
-                    $this->warn('Failed to change status in BJS');
+                $ok = $action->handle($client, $id);
+                if (! $ok) {
+                    $this->warn("Failed to cancel {$id} in BJS; skipping update.");
 
                     continue;
                 }
 
-                $this->info("✔ Order {$id} canceled successfully.");
-                $status = $state->getCompletionStatus();
-                $repo->setStatus($id, $status->value);
+                $this->info("✔ Order {$id} cancelled in BJS.");
+
+                $newStatus = $state->getCompletionStatus()->value;
+                $repo->setStatus($id, $newStatus);
 
                 $order->partial_count = $state->getRemains();
-                $order->status = $state->getCompletionStatus();
-                $order->status_bjs = $state->getCompletionStatus();
+                $order->status = $newStatus;
+                $order->status_bjs = $newStatus;
                 $order->save();
 
-                $this->info('✔ Updating status order to ' . $status->value);
+                $this->info("✔ Local order {$id} status updated to {$newStatus}");
             } catch (\Throwable $e) {
-                $this->error("✖ Failed to cancel order {$id}: {$e->getMessage()}");
+                $this->error("✖ Error cancelling {$id}: ".$e->getMessage());
             }
 
-            $this->line(''); // blank line between orders
+            $this->line(''); // blank line
         }
 
+        // Rebuild cache at the end
         $this->call('order:cache');
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

@@ -28,6 +28,7 @@ class CancelOrderCommand extends Command
      */
     public function handle(): int
     {
+        // WARN: THIS IS ONLY CHANGING BJS STATE BUT NOT INTERNAL, @see: ForceCompletionCommand instead
         // Resolve the BJS client and authenticate
         /** @var BJSClient $client */
         $client = app(BJSClient::class);

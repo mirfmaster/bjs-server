@@ -1,0 +1,22 @@
+[tasks.toggle-env]
+description = "Flip between .env.dev and .env.prod"
+run = '''
+  #!/usr/bin/env bash
+  set -euo pipefail
+
+  if [[ ! -f .env ]]; then
+    echo "No .env found – assuming dev"
+    cp .env.dev .env
+    exit 0
+  fi
+
+  if grep -q '^APP_ENV=local' .env; then
+    echo "Switching to PROD"
+    mv .env .env.dev
+    mv .env.prod .env
+  else
+    echo "Switching to DEV"
+    mv .env .env.prod
+    mv .env.dev .env
+  fi
+'''

@@ -219,7 +219,7 @@ class WorkerController extends Controller
             // 3) Bulk-insert the corresponding events
             if ($affectedRows) {
                 $events = collect($ids)->map(fn ($id) => [
-                    'account_id' => $id,
+                    'worker_id' => $id,
                     'previous_status' => $from,
                     'current_status' => $to,
                     'activity' => 'mass-update',

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    public $withinTransaction = false;
+
     public function up(): void
     {
         // 1. events table
@@ -36,7 +38,7 @@ return new class extends Migration
 
         // 3. index on the view
         DB::statement(
-            'CREATE INDEX CONCURRENT idx_mv_ts_status ON mv_account_status_30min (snapshot_ts, status)'
+            'CREATE INDEX CONCURRENTLY idx_mv_ts_status ON mv_account_status_30min (snapshot_ts, status)'
         );
     }
 

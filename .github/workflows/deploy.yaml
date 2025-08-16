@@ -36,6 +36,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
           key: ${{ secrets.PRIVATE_KEY }}
+          envs: GITHUB_SHA
           script: |
             cd /var/www/html/bjs/bjs-server
             DEPLOY_ENV=production ./.github/workflows/deploy.sh

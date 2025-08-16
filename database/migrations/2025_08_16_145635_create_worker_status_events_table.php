@@ -33,9 +33,10 @@ return new class extends Migration
             SELECT
                 date_trunc('minute', created_at) - interval '30 min' AS snapshot_ts,
                 current_status                                          AS status,
+                activity,
                 COUNT(*)::bigint                                        AS cnt
             FROM worker_status_events
-            GROUP BY snapshot_ts, status
+            GROUP BY snapshot_ts, activity, status
         SQL);
 
         // 3. index on the view

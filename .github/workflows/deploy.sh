@@ -2,6 +2,7 @@
 set -euo pipefail
 
 DEPLOY_ENV="${DEPLOY_ENV:-staging}"
+GITHUB_SHA="${GITHUB_SHA}"
 echo "🚀 Deployment started for $DEPLOY_ENV …"
 
 # Enter maintenance mode (or continue if already down)

@@ -37,5 +37,5 @@ jobs:
           port: ${{ secrets.PORT }}
           key: ${{ secrets.PRIVATE_KEY }}
           script: |
-            cd /var/www/bjs/bjs-server
+            cd /var/www/html/bjs/bjs-server
             DEPLOY_ENV=production ./.github/workflows/deploy.sh

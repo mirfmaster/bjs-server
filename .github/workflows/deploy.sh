@@ -1,26 +1,23 @@
-#!/bin/bash
-set -e
+#!/bin/env bash
+set -euo pipefail
 
-echo "Deployment started ..."
+DEPLOY_ENV="${DEPLOY_ENV:-staging}"
+echo "🚀 Deployment started for $DEPLOY_ENV …"
 
-# Enter maintenance mode or return true
-# if already is in maintenance mode
-(php artisan down) || true
+# Enter maintenance mode (or continue if already down)
+php artisan down --render="errors::503" || true
 
-# git pull origin dev/raspi-with-api-l9
-git fetch && git pull
+# Always pull the exact ref that triggered the workflow
+git fetch origin
+git reset --hard "$GITHUB_SHA"
 
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
-# Run database migrations
-# NOTE: currently disabled
+# Database migrations (enable when ready)
 php artisan migrate --force
 
-# Recreate cache
 php artisan optimize
 php artisan queue:restart
 
-# Exit maintenance mode
 php artisan up
-
-echo "Deployment finished!"
+echo "✅ Deployment finished for $DEPLOY_ENV!"

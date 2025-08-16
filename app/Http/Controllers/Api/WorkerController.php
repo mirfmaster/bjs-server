@@ -203,7 +203,10 @@ class WorkerController extends Controller
                 $query->limit($request->query('limit'));
             }
 
-            $affectedRows = $query->update(['status' => $request->query('to_status')]);
+            $affectedRows = $query->update([
+                'status' => $request->query('to_status'),
+                'activity' => 'mass-update',
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -214,7 +217,7 @@ class WorkerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update worker status: ' . $e->getMessage(),
+                'message' => 'Failed to update worker status: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -236,7 +239,7 @@ class WorkerController extends Controller
         try {
             // Store the uploaded file
             $file = $request->file('csv_file');
-            $filename = 'workers_' . date('Y_m_d_His') . '.csv';
+            $filename = 'workers_'.date('Y_m_d_His').'.csv';
             $path = $file->storeAs('assets/prod', $filename);
 
             if (! $path) {
@@ -251,7 +254,7 @@ class WorkerController extends Controller
 
             // Run the import command
             $exitCode = Artisan::call('workers:import', [
-                'file' => storage_path('app/' . $path),
+                'file' => storage_path('app/'.$path),
                 '--delimiter' => $delimiter,
             ]);
 

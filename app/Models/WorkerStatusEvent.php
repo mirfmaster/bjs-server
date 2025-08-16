@@ -12,7 +12,7 @@ class WorkerStatusEvent extends Model
     protected $table = 'worker_status_events';
 
     protected $fillable = [
-        'account_id',
+        'worker_id',
         'previous_status',
         'current_status',
         'activity',

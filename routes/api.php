@@ -24,6 +24,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::prefix('worker')->group(function () {
     Route::get('/info', [WorkerController::class, 'getInfo']);
+    // NOTE: API for mass update
     Route::get('/update-status', [WorkerController::class, 'updateStatus']);
     Route::post('/import', [WorkerController::class, 'import']);
     Route::get('/version', [WorkerController::class, 'getLatestVersion']);

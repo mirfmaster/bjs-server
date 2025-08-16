@@ -11,7 +11,7 @@ class WorkerObserver
     {
         if ($worker->isDirty('status')) {
             WorkerStatusEvent::create([
-                'account_id' => $worker->id,
+                'worker_id' => $worker->id,
                 'previous_status' => $worker->getOriginal('status'),
                 'current_status' => $worker->status,
                 'activity' => $worker->activity,   // <-- here

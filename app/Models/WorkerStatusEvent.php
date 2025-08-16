@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class AccountStatusEvent extends Model
+class WorkerStatusEvent extends Model
 {
     use HasFactory;
 
-    protected $table = 'account_status_events';
+    protected $table = 'worker_status_events';
 
     protected $fillable = [
         'account_id',

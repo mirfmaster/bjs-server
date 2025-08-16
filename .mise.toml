@@ -20,3 +20,28 @@ run = '''
     mv .env.dev .env
   fi
 '''
+
+[tasks.release]
+description = "Tag a release: vYYYY.mm.dd.patch (auto-increments patch for same day)"
+run = '''
+  #!/usr/bin/env bash
+  set -euo pipefail
+
+  # Today’s date parts
+  YEAR=$(date +%Y)
+  MONTH=$(date +%m)
+  DAY=$(date +%d)
+  PREFIX="v${YEAR}.${MONTH}.${DAY}"
+
+  # Highest existing patch for today, default to -1
+  LAST_PATCH=$(git tag -l "${PREFIX}.*" | sed 's/.*\.\([0-9]\+\)$/\1/' | sort -n | tail -n1)
+  LAST_PATCH=${LAST_PATCH:--1}
+
+  PATCH=$((LAST_PATCH + 1))
+  TAG="${PREFIX}.${PATCH}"
+
+  echo "Creating release tag: $TAG"
+  git tag -a "$TAG" -m "Release $TAG"
+  git push origin "$TAG"
+  echo "Tagged and pushed $TAG"
+'''

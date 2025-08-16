@@ -2,20 +2,40 @@ name: deployment
 
 on:
   push:
-    branches: [main]
-    # tags:
-    #   - '[0-9]+.[0-9]+.[0-9]+' # Matches semantic versioning tags like 0.0.1
+    branches: [main] # staging / dev
+    tags: ["v*"] # production – any tag starting with v
 
 jobs:
+  # deploy_staging:
+  #   if: github.ref_type == 'branch' # only on push to main
+  #   runs-on: ubuntu-22.04
+  #   environment: staging # optional: GitHub environments
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Deploy to staging
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: ${{ secrets.STAGING_HOST }}
+  #         username: ${{ secrets.STAGING_USER }}
+  #         port: ${{ secrets.STAGING_PORT }}
+  #         key: ${{ secrets.STAGING_SSH_KEY }}
+  #         script: |
+  #           cd /var/www/staging/bjs-server
+  #           DEPLOY_ENV=staging ./.github/workflows/deploy.sh
+
   deploy_prod:
+    if: github.ref_type == 'tag' # only on tag push
     runs-on: ubuntu-22.04
+    environment: production # protects prod secrets
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to server
-        uses: appleboy/ssh-action@master
+      - name: Deploy to production
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
           key: ${{ secrets.PRIVATE_KEY }}
-          script: cd /var/www/html/bjs/bjs-server && ./.github/workflows/deploy.sh
+          script: |
+            cd /var/www/bjs/bjs-server
+            DEPLOY_ENV=production ./.github/workflows/deploy.sh

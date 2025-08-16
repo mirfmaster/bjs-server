@@ -40,6 +40,9 @@ run = '''
   PATCH=$((LAST_PATCH + 1))
   TAG="${PREFIX}.${PATCH}"
 
+  echo "Pushing latest commits before tagging..."
+  git push origin
+
   echo "Creating release tag: $TAG"
   git tag -a "$TAG" -m "Release $TAG"
   git push origin "$TAG"

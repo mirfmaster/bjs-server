@@ -16,7 +16,6 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         //
-        Worker::observe(WorkerObserver::class);
     }
 
     /**
@@ -27,5 +26,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         //
+        Worker::observe(WorkerObserver::class);
     }
 }

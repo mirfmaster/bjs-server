@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Consts\OrderConst;
 use App\Http\Controllers\Controller;
 use App\Models\Worker;
+use App\Models\WorkerStatusEvent;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -197,22 +198,41 @@ class WorkerController extends Controller
         ]);
 
         try {
-            $query = Worker::where('status', $request->query('from_status'));
+            $from = $request->query('from_status');
+            $to = $request->query('to_status');
+            $limit = $request->integer('limit');
 
-            if ($request->has('limit')) {
-                $query->limit($request->query('limit'));
+            // 1) Grab the IDs we are about to change
+            $query = Worker::where('status', $from);
+            if ($limit) {
+                $query->limit($limit);
             }
+            $ids = $query->pluck('id')->toArray();
 
-            $affectedRows = $query->update([
-                'status' => $request->query('to_status'),
-                'activity' => 'mass-update',
-            ]);
+            // 2) Mass-update the workers
+            $affectedRows = Worker::whereIn('id', $ids)
+                ->update([
+                    'status' => $to,
+                    'updated_at' => now(),
+                ]);
+
+            // 3) Bulk-insert the corresponding events
+            if ($affectedRows) {
+                $events = collect($ids)->map(fn ($id) => [
+                    'account_id' => $id,
+                    'previous_status' => $from,
+                    'current_status' => $to,
+                    'activity' => 'mass-update',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])->toArray();
+
+                WorkerStatusEvent::insert($events);
+            }
 
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'affected_rows' => $affectedRows,
-                ],
+                'data' => ['affected_rows' => $affectedRows],
             ]);
         } catch (\Exception $e) {
             return response()->json([

@@ -20,7 +20,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->job(new GetUserIndofoll)->daily();
 
-        $schedule->command('bjs:fetch')
+        $schedule->command('bjs:fetch-ig')
             ->everyThreeMinutes()
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/bjs_fetch.log'));

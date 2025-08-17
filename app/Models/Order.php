@@ -70,4 +70,35 @@ class Order extends Model
     {
         return 'https://anon.ws/?to='.urlencode($this->getInstagramUrl());
     }
+
+    // CACHE
+    public function state(): OrderState
+    {
+        return OrderCache::state($this);
+    }
+
+    public function markProcessing(): int
+    {
+        return OrderCache::processing($this);
+    }
+
+    public function markProcessed(): int
+    {
+        return OrderCache::processed($this);
+    }
+
+    public function markFailed(): int
+    {
+        return OrderCache::failed($this);
+    }
+
+    public function markDuplicate(): int
+    {
+        return OrderCache::duplicateInteraction($this);
+    }
+
+    public function setStatusCached(string $status): void
+    {
+        OrderCache::setStatus($this, $status);
+    }
 }

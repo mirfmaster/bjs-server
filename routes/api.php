@@ -47,5 +47,10 @@ Route::prefix('v2')
 
         Route::apiResource('workers', APIWorkerController::class);
 
+        Route::post('orders/{order}/processing', [APIOrderController::class, 'processing']);
+        Route::post('orders/{order}/processed', [APIOrderController::class, 'processed']);
+        Route::post('orders/{order}/failed', [APIOrderController::class, 'failed']);
+        Route::post('orders/{order}/duplicate', [APIOrderController::class, 'duplicate']);
+        Route::patch('orders/{order}/status', [APIOrderController::class, 'updateStatus']);
         Route::apiResource('orders', APIOrderController::class);
     });

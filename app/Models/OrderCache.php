@@ -58,6 +58,13 @@ final class OrderCache
         return Cache::increment(self::key($order, 'failed'));
     }
 
+    public static function failedWithReason(Order $order, ?string $reason): int
+    {
+        Cache::put(self::key($order, 'fail_reason'), $reason);
+
+        return self::failed($order);
+    }
+
     public static function duplicateInteraction(Order $order): int
     {
         return Cache::increment(self::key($order, 'duplicate_interaction'));

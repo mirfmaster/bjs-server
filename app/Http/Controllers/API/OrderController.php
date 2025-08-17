@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderCache;
@@ -95,5 +96,43 @@ class OrderController extends Controller
     public function destroy($id)
     {
         //
+    }
+
+    // --- STATE ------
+    public function processing(Order $order)
+    {
+        $value = OrderCache::processing($order);
+
+        return response()->json(['processing' => $value]);
+    }
+
+    public function processed(Order $order)
+    {
+        $value = OrderCache::processed($order);
+
+        return response()->json(['processed' => $value]);
+    }
+
+    public function failed(Request $request, Order $order)
+    {
+        $request->validate(['reason' => 'nullable|string|max:255']);
+        $count = OrderCache::failedWithReason($order, $request->input('reason'));
+
+        return response()->json(['failed' => $count, 'reason' => $request->input('reason')]);
+    }
+
+    public function duplicate(Order $order)
+    {
+        $value = OrderCache::duplicateInteraction($order);
+
+        return response()->json(['duplicate_interaction' => $value]);
+    }
+
+    public function updateStatus(Request $request, Order $order)
+    {
+        $status = $request->enum('status', OrderStatus::class);
+        OrderCache::setStatus($order, $status->value);
+
+        return response()->json(['status' => $status->value]);
     }
 }

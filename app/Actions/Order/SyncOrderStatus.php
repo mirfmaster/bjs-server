@@ -15,7 +15,8 @@ class SyncOrderStatus
     public function __construct(
         public Order $order,
         public readonly BJSService $bjsService,
-    ) {}
+    ) {
+    }
 
     // TODO: the actions only handle BJS status, extract get query, direct order handler to upper layer
     public function handle()
@@ -189,6 +190,7 @@ class SyncOrderStatus
         }
 
         $this->updateModelOnly($order, $state);
+        OrderCache::flush($order);
 
         Log::info('Successfully updated BJS + model only for Completed');
     }

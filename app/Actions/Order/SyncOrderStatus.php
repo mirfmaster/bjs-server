@@ -20,20 +20,21 @@ class SyncOrderStatus
     // TODO: the actions only handle BJS status, extract get query, direct order handler to upper layer
     public function handle()
     {
+        $likeBatch = (int) config('app.orders.like.batch_size', 200);
+        $followBatch = (int) config('app.orders.follow.batch_size', 150);
         $like = $this->order->query()
             ->whereIn('status_bjs', ['inprogress', 'processing'])
             ->orderBy('priority', 'desc')
             ->where('kind', 'like')
             ->orderBy('created_at', 'asc')
-            // TODO: extract this into single constants
-            ->limit(20)
+            ->limit($likeBatch)
             ->get();
         $follow = $this->order->query()
             ->whereIn('status_bjs', ['inprogress', 'processing'])
             ->orderBy('priority', 'desc')
             ->where('kind', 'follow')
             ->orderBy('created_at', 'asc')
-            ->limit(10)
+            ->limit($followBatch)
             ->get();
         $orders = $like->merge($follow);
         Log::info('Syncing '.count($orders).' orders status');

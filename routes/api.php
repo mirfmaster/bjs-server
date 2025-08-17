@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\OrderController as APIOrderController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\WorkerController;
 use App\Http\Controllers\API\WorkerController as APIWorkerController;
@@ -44,4 +45,6 @@ Route::prefix('v2')
         Route::get('workers/executors', [APIWorkerController::class, 'getExecutors']);
 
         Route::apiResource('workers', APIWorkerController::class);
+
+        Route::apiResource('orders', APIOrderController::class);
     });

@@ -227,4 +227,16 @@ return [
     'pyproxy_password' => env('PYPROXY_PASSWORD'),
 
     'preferred_proxy' => env('PREFERRED_PROXY', ProxyManager::MANAGEDPROXY),
+    'orders' => [
+        'like' => [
+            'min_per_worker' => 3,
+            'max_per_worker' => 7,
+            'batch_size' => 50,
+        ],
+        'follow' => [
+            'min_per_worker' => 1,
+            'max_per_worker' => 3,
+            'batch_size' => 20,
+        ],
+    ],
 ];

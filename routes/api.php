@@ -38,6 +38,7 @@ Route::prefix('telegram')->group(function () {
 });
 
 Route::prefix('v2')
+    ->name('v2.')
     // ->middleware('throttle:2400,1')
     ->group(function () {
         Route::post('workers/upsert', [APIWorkerController::class, 'upsert'])

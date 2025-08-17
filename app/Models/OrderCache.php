@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Cache;
 
 final class OrderCache
 {
-    private const SUFFIXES = [
+    public const SUFFIXES = [
         'status',
         'processing',
         'processed',

@@ -3,21 +3,17 @@
 namespace App\Console\Commands\Order;
 
 use App\Enums\OrderStatus;
-use App\Repositories\OrderCacheRepository;
-use App\Repositories\OrderState;
+use App\Models\Order;
+use App\Models\OrderCache;
+use App\Models\OrderState;
 use Illuminate\Console\Command;
 use UnitEnum;
 
 class UpdateStatusStateCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = <<<'SIG'
 order:update-state
-    {ids* : One or more order IDs}
+    {orders?* : One or more order IDs or "all" for every pending order}
     {--status= : Set the order status (must be a valid OrderStatus value)}
     {--processing= : Set the "processing" counter}
     {--processed= : Set the "processed" counter}
@@ -29,19 +25,19 @@ order:update-state
     {--dry-run : Do not actually write to cache; just show diffs}
 SIG;
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Mass-update order cache states, with before/after and optional dry-run';
 
     public function handle()
     {
-        $ids = $this->argument('ids');
+        $orderIds = $this->argument('orders');
         $dry = $this->option('dry-run');
 
-        // Map option names to your Redis suffixes
+        // Build the list of orders to touch
+        $orders = $orderIds === ['all'] || empty($orderIds)
+            ? Order::cursor()
+            : Order::whereIn('id', $orderIds)->cursor();
+
+        // Map CLI options to cache suffixes
         $map = [
             'status' => 'status',
             'processing' => 'processing',
@@ -53,12 +49,11 @@ SIG;
             'fail-reason' => 'fail_reason',
         ];
 
-        // Gather only the options the user passed
         $updates = [];
-        foreach ($map as $opt => $suffix) {
-            $val = $this->option($opt);
-            if (! is_null($val) && $val !== '') {
-                $updates[$suffix] = $val;
+        foreach ($map as $option => $suffix) {
+            $value = $this->option($option);
+            if (! is_null($value) && $value !== '') {
+                $updates[$suffix] = $value;
             }
         }
 
@@ -68,18 +63,11 @@ SIG;
             return Command::INVALID;
         }
 
-        /** @var OrderCacheRepository $repo */
-        $repo = app(OrderCacheRepository::class);
+        foreach ($orders as $order) {
+            /** @var Order $order */
+            $before = $order->state();
 
-        foreach ($ids as $id) {
-            $before = $repo->getState($id);
-            if (is_null($before)) {
-                $this->warn("Order {$id} has no cached state; skipping.");
-
-                continue;
-            }
-
-            // Build the "after" state object by overriding only provided fields
+            // Build the new state
             try {
                 $after = new OrderState(
                     id: $before->id,
@@ -99,7 +87,7 @@ SIG;
                         ? (int) $updates['failed']
                         : $before->failed,
                     firstInteraction: isset($updates['first_interaction'])
-                        ? (string) $updates['first_interaction']
+                        ? (int) $updates['first_interaction']
                         : $before->firstInteraction,
                     requested: isset($updates['requested'])
                         ? (int) $updates['requested']
@@ -109,15 +97,14 @@ SIG;
                         : $before->failReason,
                 );
             } catch (\ValueError $e) {
-                $this->error("Invalid status for order {$id}: ".$e->getMessage());
+                $this->error("Invalid status for order {$order->id}: ".$e->getMessage());
 
                 continue;
             }
 
-            // Prepare display table rows
+            // Display diff table
             $rows = [];
-            foreach (OrderState::cacheSuffixes() as $suffix) {
-                // map suffix → property name
+            foreach (OrderCache::SUFFIXES as $suffix) {
                 $prop = match ($suffix) {
                     'duplicate_interaction' => 'duplicateInteraction',
                     'first_interaction' => 'firstInteraction',
@@ -128,51 +115,40 @@ SIG;
                 $rawBefore = $before->{$prop};
                 $rawAfter = $after->{$prop};
 
-                // if it’s an enum, grab ->value, else leave as-is
-                $dispBefore = $rawBefore instanceof UnitEnum
-                    ? $rawBefore->value
-                    : $rawBefore;
-                $dispAfter = $rawAfter instanceof UnitEnum
-                    ? $rawAfter->value
-                    : $rawAfter;
+                $dispBefore = $rawBefore instanceof UnitEnum ? $rawBefore->value : $rawBefore;
+                $dispAfter = $rawAfter  instanceof UnitEnum ? $rawAfter->value : $rawAfter;
 
-                // finally cast to string (null→'' etc)
-                $rows[] = [
-                    $suffix,
-                    (string) $dispBefore,
-                    (string) $dispAfter,
-                ];
+                $rows[] = [$suffix, (string) $dispBefore, (string) $dispAfter];
             }
-            $this->info("Order {$id}:");
+
+            $this->info("Order {$order->id}:");
             $this->table(['Field', 'Before', 'After'], $rows);
 
-            if (! $dry) {
-                $tags = $repo->store->tags("order:{$id}");
+            if ($dry) {
+                $this->info(' → Dry-run, no changes applied.');
 
-                // Status
-                if (isset($updates['status'])) {
-                    $repo->setStatus($id, $after->status->value);
-                }
-
-                // All other fields: do a straight put
-                foreach ($updates as $suffix => $value) {
-                    if ($suffix === 'status') {
-                        continue;
-                    }
-                    $key = "order:{$id}:{$suffix}";
-                    // For first interaction we just overwrite
-                    $tags->put($key, $value);
-                }
-
-                $this->info(" → Updated cache for order {$id}.");
-            } else {
-                $this->info(" → Dry-run, no changes applied for order {$id}.");
+                continue;
             }
 
-            $this->line(''); // blank line between orders
+            // Apply the updates
+            if (isset($updates['status'])) {
+                OrderCache::setStatus($order, $after->status->value);
+            }
+
+            foreach ($updates as $suffix => $value) {
+                if ($suffix === 'status') {
+                    continue;
+                }
+
+                $key = OrderCache::key($order, $suffix);
+                cache()->put($key, $value);
+            }
+
+            $this->info(" → Updated cache for order {$order->id}.");
+            $this->line('');
         }
 
-        $this->call('order:cache');
+        $this->info('All done.');
 
         return Command::SUCCESS;
     }

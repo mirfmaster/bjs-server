@@ -5,7 +5,7 @@ namespace App\Console\Commands\Order;
 use App\Actions\BJS\CancelBJSOrderAction;
 use App\Client\BJSClient;
 use App\Models\Order;
-use App\Repositories\OrderCacheRepository;
+use App\Models\OrderCache;
 use Illuminate\Console\Command;
 
 class ForceCompletionCommand extends Command
@@ -75,8 +75,6 @@ class ForceCompletionCommand extends Command
 
         /** @var CancelBJSOrderAction $action */
         $action = app(CancelBJSOrderAction::class);
-        /** @var OrderCacheRepository $repo */
-        $repo = app(OrderCacheRepository::class);
 
         foreach ($ids as $id) {
             $order = Order::where('bjs_id', $id)->first();
@@ -92,7 +90,7 @@ class ForceCompletionCommand extends Command
                 continue;
             }
 
-            $state = $repo->getState($id);
+            $state = OrderCache::state($order);
             if (is_null($state)) {
                 $this->warn("Order {$id} has no cached state; skipping.");
 
@@ -110,13 +108,14 @@ class ForceCompletionCommand extends Command
 
                 $this->info("✔ Order {$id} cancelled in BJS.");
 
-                $newStatus = $state->getCompletionStatus()->value;
-                $repo->setStatus($id, $newStatus);
+                $newStatus = $state->completionStatus()->value;
+                OrderCache::setStatus($order, $newStatus);
 
-                $order->partial_count = $state->getRemains();
+                $order->partial_count = $state->remains();
                 $order->status = $newStatus;
                 $order->status_bjs = $newStatus;
                 $order->save();
+                OrderCache::flush($order);
 
                 $this->info("✔ Local order {$id} status updated to {$newStatus}");
             } catch (\Throwable $e) {

@@ -42,10 +42,9 @@ class CacheOrderCommand extends Command
 
         // Merge and ensure detail keys for each order
         $all = $likeOrders->concat($followOrders);
-        $this->ensureDetailCache($all);
 
         $this->info('Cached like & follow lists + per-order detail keys (2-month TTL).');
-        $this->info('Total orders: ' . count($all));
+        $this->info('Total orders: '.count($all));
 
         return Command::SUCCESS;
     }
@@ -79,41 +78,5 @@ class CacheOrderCommand extends Command
         Cache::put(self::CACHE_KEY_FOLLOW, $orders, $this->ttl);
 
         return $orders;
-    }
-
-    private function ensureDetailCache(Collection $orders): void
-    {
-        foreach ($orders as $order) {
-            $id = $order->id;
-            $key = "order:{$id}:status";
-
-            // if status key already exists, assume detail is cached
-            if (Cache::tags("order:$id")->has($key)) {
-                continue;
-            }
-
-            $this->createDetailCache($order);
-        }
-    }
-
-    private function createDetailCache(Order $order): void
-    {
-        $id = $order->id;
-        $requested = $order->requested;
-
-        Cache::tags("order:$id")
-            ->put("order:{$id}:status", $order->status, $this->ttl);
-        Cache::tags("order:$id")
-            ->put("order:{$id}:processing", 0, $this->ttl);
-        Cache::tags("order:$id")
-            ->put("order:{$id}:processed", 0, $this->ttl);
-        Cache::tags("order:$id")
-            ->put("order:{$id}:failed", 0, $this->ttl);
-        Cache::tags("order:$id")
-            ->put("order:{$id}:duplicate_interaction", 0, $this->ttl);
-        Cache::tags("order:$id")
-            ->put("order:{$id}:requested", $requested, $this->ttl);
-        Cache::tags("order:$id")
-            ->put("order:{$id}:fail_reason", '', $this->ttl);
     }
 }

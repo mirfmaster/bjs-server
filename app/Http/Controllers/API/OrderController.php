@@ -20,6 +20,7 @@ class OrderController extends Controller
     public function index()
     {
         // 1.  How many orders the server reserved (cached)
+        // Triggered from command order:cache
         $likes = Cache::get('orders:pending:like', collect());
         $follows = Cache::get('orders:pending:follow', collect());
 
@@ -40,6 +41,8 @@ class OrderController extends Controller
 
         return response()->json([
             'orders' => [
+                'totalLikes' => count($likes),
+                'totalFollow' => count($follows),
                 'like' => $workerLikes,
                 'follow' => $workerFollows,
             ],

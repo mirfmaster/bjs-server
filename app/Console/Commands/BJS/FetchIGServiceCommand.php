@@ -45,14 +45,16 @@ class FetchIGServiceCommand extends Command
         $this->info('Starting fetching like orders');
         /** @var FetchLikeOrder */
         $likeAct = app(FetchLikeOrder::class);
-        foreach ([167] as $serviceID) {
+        // TODO: get service based on .env
+        foreach ([167, 182] as $serviceID) {
             $likeAct->handle($bjsService, $serviceID, BJSOrderStatus::PENDING->value);
         }
 
         $this->info('Starting fetching follow orders');
         /** @var FetchFollowOrder */
         $follAct = app(FetchFollowOrder::class);
-        foreach ([164] as $serviceID) {
+        // TODO: get service based on .env
+        foreach ([164, 183] as $serviceID) {
             $follAct->handle($bjsService, $igClient, $serviceID, BJSOrderStatus::PENDING->value);
         }
 

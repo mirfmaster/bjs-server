@@ -17,7 +17,7 @@ class FetchIGServiceCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'bjs:fetch-ig';
+    protected $signature = 'bjs:fetch-ig {--force : Skip login-state & auth checks}';
 
     /**
      * The console command description.
@@ -33,7 +33,7 @@ class FetchIGServiceCommand extends Command
      */
     public function handle()
     {
-        if (! $this->ready()) {
+        if (! $this->option('force') && ! $this->ready()) {
             return Command::SUCCESS;
         }
 
@@ -80,3 +80,4 @@ class FetchIGServiceCommand extends Command
         return true;
     }
 }
+

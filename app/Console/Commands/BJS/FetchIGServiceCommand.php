@@ -80,4 +80,3 @@ class FetchIGServiceCommand extends Command
         return true;
     }
 }
-

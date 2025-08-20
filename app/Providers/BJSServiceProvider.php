@@ -18,26 +18,33 @@ class BJSServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        // Helper	Instantiation rule
+        // bind	Every time the service is resolved from the container a new instance is built.
+        // singleton	The closure is executed once; the same instance is returned on every subsequent resolution.
+
         // Bind the RedisCookieJar as a singleton
         $this->app->singleton(RedisCookieJar::class, function ($app) {
-            return new RedisCookieJar();
+            return new RedisCookieJar;
         });
 
         // Bind BJSClient as a singleton with the cookie jar
         $this->app->singleton(BJSClient::class, function ($app) {
-            return new BJSClient();
+            return new BJSClient;
         });
 
         // Bind BJSService with the client dependency
-        $this->app->bind(BJSService::class, function ($app) {
-            return new BJSService(
+        $this->app->singleton(BJSService::class, function ($app) {
+            $bjs = new BJSService(
                 $app->make(BJSClient::class)
             );
+            $bjs->auth();
+
+            return $bjs;
         });
 
         // Bind Redis repository
         $this->app->singleton(RedisTiktokRepository::class, function ($app) {
-            return new RedisTiktokRepository();
+            return new RedisTiktokRepository;
         });
 
         // Bind BJSTiktokService with dependencies

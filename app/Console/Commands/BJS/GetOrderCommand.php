@@ -8,6 +8,7 @@ use App\Services\BJSService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class GetOrderCommand extends Command
 {
@@ -20,7 +21,7 @@ class GetOrderCommand extends Command
         $bjsClient = $service->bjs;
         $bjsIds = $this->argument('bjs_ids');
         $force = $this->option('force');
-        $this->info('Starting fetch for ' . count($bjsIds) . ' orders');
+        $this->info('Starting fetch for '.count($bjsIds).' orders');
 
         $successCount = 0;
         $failureCount = 0;
@@ -59,7 +60,7 @@ class GetOrderCommand extends Command
                 $this->info(json_encode($orderDTO));
 
                 $status = $orderDTO->getStatusEnum();
-                if ($status->isCompleted()) {
+                if ($status->isCompleted() && ! $force) {
                     $this->warn("Order with BJS ID {$bjsId} is completed in BJS. Use --force to fetch anyway.");
                     $skippedCount++;
 
@@ -68,58 +69,28 @@ class GetOrderCommand extends Command
 
                 $this->info("Processing order: {$orderDTO->id} - {$orderDTO->serviceName}");
 
-                // Prepare base order data
-                $orderData = [
-                    'bjs_id' => $bjsId,
-                    'kind' => $this->determineOrderKind($orderDTO),
-                    'target' => $orderDTO->link,
-                    'reseller_name' => $orderDTO->user,
-                    'price' => $orderDTO->charge,
-                    'requested' => $orderDTO->count,
-                    'status' => $status->label(),
-                    'status_bjs' => $status->label(),
-                    'processed' => $orderDTO->getProcessed(),
-                    'partial_count' => 0,
-                    'start_count' => $orderDTO->startCount,
-                    'source' => 'bjs',
-                ];
-
-                // If the order is completed, set end_at
-                if ($status === 'completed') {
-                    $orderData['end_at'] = now();
-                }
-
-                // If it's a like order, get media data and add to order data
+                // Handle different order types
                 if ($orderDTO->isLikeOrder()) {
-                    $shortcode = $service->extractIdentifier($orderDTO->link);
-                    if ($shortcode) {
-                        $mediaInfo = $this->getMediaData($shortcode);
-                        if ($mediaInfo->found) {
-                            $orderData = array_merge($orderData, [
-                                'username' => $mediaInfo->owner_username,
-                                'instagram_user_id' => $mediaInfo->owner_id,
-                                'media_id' => $mediaInfo->media_id,
-                                'start_count' => $mediaInfo->like_count,
-                            ]);
-                        } else {
-                            $this->warn("Failed to get media info for order {$bjsId}: {$mediaInfo->message}");
-                        }
-                    } else {
-                        $this->warn("Could not extract shortcode from link: {$orderDTO->link}");
-                    }
+                    $order = $this->handleLikeOrder($orderDTO, $service);
+                } elseif ($orderDTO->isFollowOrder()) {
+                    $order = $this->handleFollowOrder($orderDTO, $service);
                 } else {
-                    $this->error('Order Follwo not handled yet');
+                    $this->error("Unsupported order type for BJS ID {$bjsId}");
+                    $failureCount++;
 
                     continue;
                 }
 
-                // Create the order
-                $order = Order::create($orderData);
-
-                $this->info("Successfully created order with BJS ID {$bjsId} (ID: {$order->id})");
-                $successCount++;
+                if ($order) {
+                    $this->info("Successfully created order with BJS ID {$bjsId} (ID: {$order->id})");
+                    $this->info(json_encode($order));
+                    $successCount++;
+                } else {
+                    $this->error("Failed to create order for BJS ID {$bjsId}");
+                    $failureCount++;
+                }
             } catch (\Exception $e) {
-                $this->error("Failed to fetch order with BJS ID {$bjsId}: " . $e->getMessage());
+                $this->error("Failed to fetch order with BJS ID {$bjsId}: ".$e->getMessage());
                 Log::error("Fetch failed for BJS ID {$bjsId}", ['error' => $e->getMessage()]);
                 $failureCount++;
             }
@@ -130,26 +101,118 @@ class GetOrderCommand extends Command
         return $failureCount > 0 ? 1 : 0;
     }
 
-    // TODO: dont use this, just use dto helper, create dto handler for check whether its handled service
-    private function determineOrderKind(OrderDTO $orderDTO): string
+    private function handleLikeOrder(OrderDTO $orderDTO, BJSService $service): ?Order
     {
-        if ($orderDTO->isLikeOrder()) {
-            return 'like';
+        // Prepare base order data
+        $orderData = [
+            'bjs_id' => $orderDTO->id,
+            'kind' => 'like',
+            'target' => $orderDTO->link,
+            'reseller_name' => $orderDTO->user,
+            'price' => $orderDTO->charge,
+            'requested' => $orderDTO->count,
+            'status' => 'inprogress',
+            'status_bjs' => 'inprogress',
+            'source' => 'bjs',
+        ];
+
+        // Get media data
+        $shortcode = $service->extractIdentifier($orderDTO->link);
+        if (! $shortcode) {
+            $this->warn("Could not extract shortcode from link: {$orderDTO->link}");
+
+            return null;
         }
 
-        if ($orderDTO->isFollowOrder()) {
-            return 'follow';
+        $mediaInfo = $this->getMediaData($shortcode);
+        if (! $mediaInfo->found) {
+            $this->warn("Failed to get media info for order {$orderDTO->id}: {$mediaInfo->message}");
+
+            return null;
         }
 
-        // Fallback based on service ID
-        $serviceId = $orderDTO->serviceId;
-        if ($serviceId >= 1 && $serviceId <= 10) {
-            return 'like';
-        } elseif ($serviceId >= 11 && $serviceId <= 20) {
-            return 'follow';
+        // Add media-specific data
+        $orderData = array_merge($orderData, [
+            'username' => $mediaInfo->owner_username,
+            'instagram_user_id' => $mediaInfo->owner_id,
+            'media_id' => $mediaInfo->media_id,
+            'start_count' => $mediaInfo->like_count,
+        ]);
+
+        return Order::create($orderData);
+    }
+
+    private function handleFollowOrder(OrderDTO $orderDTO, BJSService $service): ?Order
+    {
+        // Extract username from link
+        $username = $service->extractIdentifier($orderDTO->link);
+        if (empty($username)) {
+            Log::warning('Username is not valid, skipping...', ['link' => $orderDTO->link]);
+
+            return null;
         }
 
-        return 'unknown';
+        /** @var \App\Client\InstagramClient::class * */
+        $igCli = app(\App\Client\InstagramClient::class);
+
+        // Fetch profile data
+        $info = $igCli->fetchProfile($username);
+        Log::debug('Instagram profile data', ['info' => $info]);
+
+        // Check if profile was found
+        if (! $info->found) {
+            Log::info('User info not found for username: '.$username);
+
+            return null;
+        }
+
+        // Check if user is blacklisted
+        if (Redis::sismember('system:order:follow-blacklist', $info->pk)) {
+            Log::info('User is blacklisted, skipping follow order', [
+                'order_id' => $orderDTO->id,
+                'user_id' => $info->pk,
+                'username' => $username,
+            ]);
+
+            return null;
+        }
+
+        // Check if account is private
+        if ($info->is_private) {
+            Log::info('User account is private, skipping follow order', [
+                'order_id' => $orderDTO->id,
+                'username' => $username,
+            ]);
+
+            return null;
+        }
+
+        // Get follower count as start count
+        $startCount = $info->follower_count;
+        Log::info('Successfully fetched profile data', [
+            'username' => $username,
+            'follower_count' => $startCount,
+        ]);
+
+        // Prepare order data
+        $requested = $orderDTO->count;
+        $orderData = [
+            'bjs_id' => $orderDTO->id,
+            'kind' => 'follow',
+            'username' => $username,
+            'instagram_user_id' => $info->pk,
+            'target' => $orderDTO->link,
+            'reseller_name' => $orderDTO->user,
+            'price' => $orderDTO->charge,
+            'start_count' => $startCount,
+            'requested' => $requested,
+            'margin_request' => $requested, // No margin for follows
+            'status' => 'inprogress',
+            'status_bjs' => 'inprogress',
+            'source' => 'bjs',
+        ];
+
+        return Order::create($orderData);
     }
 
     public function getMediaData(string $code)

@@ -79,6 +79,17 @@ class OrderDTO
         return stripos($this->serviceName, 'follow') !== false;
     }
 
+    public function getType(): ?string
+    {
+        if ($this->isLikeOrder()) {
+            return 'like';
+        } elseif ($this->isFollowOrder()) {
+            return 'follow';
+        }
+
+        return null;
+    }
+
     public function getStatusEnum(): BJSOrderStatus
     {
         return BJSOrderStatus::tryFrom($this->statusCode);

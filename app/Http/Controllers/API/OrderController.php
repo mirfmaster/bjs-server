@@ -68,7 +68,7 @@ class OrderController extends Controller
      */
     public function show($id): JsonResponse
     {
-        $order = Order::with(['likes', 'follows']) // adjust relations as needed
+        $order = Order::query() // adjust relations as needed
             ->findOrFail($id);
 
         $cache = OrderCache::state($order);

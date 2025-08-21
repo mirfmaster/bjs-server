@@ -18,6 +18,11 @@ final class OrderState
         public readonly ?string $failReason,
     ) {}
 
+    public function isValid(): int
+    {
+        return $this->requested > 0;
+    }
+
     public function remains(): int
     {
         return max(0, $this->requested - $this->processed);

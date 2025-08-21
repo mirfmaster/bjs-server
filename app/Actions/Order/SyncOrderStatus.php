@@ -71,6 +71,11 @@ class SyncOrderStatus
 
             return;
         }
+        if (! $state->isValid()) {
+            Log::warning("Skipping order, state is not valid: $order->id");
+
+            return;
+        }
 
         match ($state->status) {
             OrderStatus::INPROGRESS => $this->handleInProgress($order, $state),

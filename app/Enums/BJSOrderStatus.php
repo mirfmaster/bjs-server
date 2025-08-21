@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+// TODO: restructure to BJS/OrderStatus
 enum BJSOrderStatus: int
 {
     case PENDING = 0;
@@ -40,5 +41,10 @@ enum BJSOrderStatus: int
             'error' => self::ERROR,
             default => null,
         };
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this === self::COMPLETED;
     }
 }

@@ -91,4 +91,12 @@ final class OrderCache
     {
         Cache::deleteMultiple(self::keys($order));
     }
+
+    public static function processable(Order $order): bool
+    {
+        $requested = (int) Cache::get(self::key($order, 'requested'), 0);
+        $processed = (int) Cache::get(self::key($order, 'processed'), 0);
+
+        return ($requested - $processed) > 0;
+    }
 }

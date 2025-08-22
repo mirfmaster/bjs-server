@@ -39,12 +39,22 @@ class OrderController extends Controller
         $workerLikes = $likes->take($maxLike);
         $workerFollows = $follows->take($maxFollow);
 
+        $mapProcessable = function ($orders) {
+            return $orders->mapWithKeys(fn(Order $order) => [
+                $order->getKey() => OrderCache::processable($order),
+            ]);
+        };
+
         return response()->json([
             'orders' => [
                 'totalLikes' => count($likes),
                 'totalFollow' => count($follows),
                 'like' => $workerLikes,
                 'follow' => $workerFollows,
+            ],
+            'processable' => [
+                'like' => $mapProcessable($workerLikes),
+                'follow' => $mapProcessable($workerFollows),
             ],
             'config' => config('app.orders', []),
         ]);

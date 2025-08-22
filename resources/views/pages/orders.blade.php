@@ -256,8 +256,8 @@
                                                     Start: {{ number_format($order->start_count) }}
                                                 </span>
                                                 <span
-                                                    class="text-xs {{ $order->state->get('status') === 'completed' ? 'text-info' : ($order->state->get('status') === 'processing' ? '' : 'text-danger') }}">
-                                                    Redis: {{ $order->state->get('status') }}
+                                                    class="text-xs {{ $order->state->status === 'completed' ? 'text-info' : ($order->state->status === 'processing' ? '' : 'text-danger') }}">
+                                                    Redis: {{ $order->state->status }}
                                                 </span>
                                                 <span
                                                     class="text-xs {{ $order->status === 'completed' ? 'text-info' : ($order->status === 'processing' ? '' : 'text-danger') }}">
@@ -272,18 +272,18 @@
                                         <td>
                                             <div class="d-flex px-2 py-1 flex-column">
                                                 <span class="text-secondary text-xs font-weight-bold">
-                                                    {{ number_format($order->state->get('processed')) }}/{{ number_format($order->state->get('requested')) }}
-                                                    ({{ number_format($order->state->get('requested') - $order->state->get('processed')) }})
+                                                    {{ number_format($order->state->processed) }}/{{ number_format($order->state->requested) }}
+                                                    ({{ number_format($order->state->requested - $order->state->processed) }})
                                                 </span>
                                                 <span class="text-xs text-info">
-                                                    Processing: {{ number_format($order->state->get('processing')) }}
+                                                    Processing: {{ number_format($order->state->processing) }}
                                                 </span>
                                                 <span class="text-xs text-danger">
-                                                    Failed: {{ number_format($order->state->get('failed')) }}
+                                                    Failed: {{ number_format($order->state->failed) }}
                                                 </span>
                                                 <span class="text-xs text-warning">
                                                     Duplicates:
-                                                    {{ number_format($order->state->get('duplicate_interaction')) }}
+                                                    {{ number_format($order->state->duplicateInteraction) }}
                                                 </span>
                                             </div>
                                         </td>

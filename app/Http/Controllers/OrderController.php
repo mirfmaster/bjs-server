@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Client\BJSClient;
 use App\Client\InstagramClient;
 use App\Models\Order;
+use App\Models\OrderCache;
 use App\Services\BJSService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -49,36 +49,15 @@ class OrderController extends Controller
         // Paginate history results
         $history = $historyQuery->paginate($perPage)->withQueryString();
 
-        $processeds = $this->orderService->getCachedOrders();
-        $cachedOrders = Cache::getMultiple(['order:list:like', 'order:list:follow'], collect([]));
-        $processeds = collect(Arr::collapse($cachedOrders))
-            ->transform(function (Order $order) {
-                $id = $order->id;
+        // $processeds = $this->orderService->getCachedOrders();
+        $likes = Cache::get('orders:pending:like', collect());
+        $follows = Cache::get('orders:pending:follow', collect());
+        $processeds = $likes->concat($follows)->map(function (Order $order) {
+            $state = OrderCache::state($order);
+            $order->state = $state;
 
-                $raw = Cache::tags("order:$id")->many([
-                    "order:{$id}:status",
-                    "order:{$id}:processing",
-                    "order:{$id}:processed",
-                    "order:{$id}:failed",
-                    "order:{$id}:duplicate_interaction",
-                    "order:{$id}:requested",
-                    "order:{$id}:fail_reason",
-                ]);
-
-                // normalize them to ['status'=>..., 'processing'=>..., …]
-                $state = collect($raw)
-                    ->mapWithKeys(function ($value, $fullKey) {
-                        $parts = explode(':', $fullKey);
-                        $key = end($parts);
-
-                        return [$key => $value];
-                    });
-
-                // dynamically add a `state` property to the Order model
-                $order->state = $state;
-
-                return $order;
-            });
+            return $order;
+        });
 
         $orderCompleted = Order::query()->where('status', 'completed')->count();
         $orderProgress = Order::query()->where('status', 'inprogress')->count();

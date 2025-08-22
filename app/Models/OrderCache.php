@@ -27,7 +27,7 @@ final class OrderCache
     private static function keys(Order $order): array
     {
         return array_map(
-            fn (string $s) => self::key($order, $s),
+            fn(string $s) => self::key($order, $s),
             self::SUFFIXES
         );
     }
@@ -58,7 +58,7 @@ final class OrderCache
         return Cache::increment(self::key($order, 'failed'));
     }
 
-    public static function failedWithReason(Order $order, ?string $reason): int
+    public static function failReason(Order $order, ?string $reason): int
     {
         Cache::put(self::key($order, 'fail_reason'), $reason);
 

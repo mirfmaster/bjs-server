@@ -116,10 +116,17 @@ class OrderController extends Controller
         return response()->json(['processed' => $value]);
     }
 
-    public function failed(Request $request, Order $order)
+    public function failed(Order $order)
+    {
+        $value = OrderCache::failed($order);
+
+        return response()->json(['failed' => $value]);
+    }
+
+    public function setFailReason(Request $request, Order $order)
     {
         $request->validate(['reason' => 'nullable|string|max:255']);
-        $count = OrderCache::failedWithReason($order, $request->input('reason'));
+        $count = OrderCache::failReason($order, $request->input('reason'));
 
         return response()->json(['failed' => $count, 'reason' => $request->input('reason')]);
     }
@@ -134,8 +141,19 @@ class OrderController extends Controller
     public function updateStatus(Request $request, Order $order)
     {
         $status = $request->enum('status', OrderStatus::class);
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        if (! empty($validated['reason'])) {
+            OrderCache::failReason($order, $validated['reason']);
+        }
+
         OrderCache::setStatus($order, $status->value);
 
-        return response()->json(['status' => $status->value]);
+        return response()->json([
+            'status' => $status->value,
+            'reason' => $request->reason,
+        ]);
     }
 }

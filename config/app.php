@@ -230,7 +230,7 @@ return [
     'orders' => [
         'like' => [
             'min_per_worker' => 3,
-            'max_per_worker' => 7,
+            'max_per_worker' => 10,
             'batch_size' => 50,
         ],
         'follow' => [

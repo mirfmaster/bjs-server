@@ -26,13 +26,13 @@ class OrderController extends Controller
 
         // 2.  Random amount each worker may take
         $maxLike = random_int(
-            (int) config('app.orders.like.min_per_worker', 10),
+            (int) config('app.orders.like.min_per_worker', 4),
             (int) config('app.orders.like.max_per_worker', 30)
         );
 
         $maxFollow = random_int(
-            (int) config('app.orders.follow.min_per_worker', 5),
-            (int) config('app.orders.follow.max_per_worker', 20)
+            (int) config('app.orders.follow.min_per_worker', 1),
+            (int) config('app.orders.follow.max_per_worker', 3)
         );
 
         // 3.  Slice down to what the worker may actually process

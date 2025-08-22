@@ -36,8 +36,8 @@ class OrderController extends Controller
         );
 
         // 3.  Slice down to what the worker may actually process
-        $workerLikes = $likes->shuffle()->take($maxLike);
-        $workerFollows = $follows->shuffle()->take($maxFollow);
+        $workerLikes = $likes->take($maxLike);
+        $workerFollows = $follows->take($maxFollow);
 
         return response()->json([
             'orders' => [

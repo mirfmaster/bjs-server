@@ -16,7 +16,7 @@ class DeleteOrderCommand extends Command
     public function handle()
     {
         $bjsIds = $this->argument('bjs_ids');
-        $this->info('Starting cleanup for ' . count($bjsIds) . ' orders');
+        $this->info('Starting cleanup for '.count($bjsIds).' orders');
 
         $successCount = 0;
         $failureCount = 0;
@@ -41,13 +41,15 @@ class DeleteOrderCommand extends Command
                 $this->info("Successfully deleted order and state for BJS ID: {$bjsId}");
                 $successCount++;
             } catch (\Exception $e) {
-                $this->error("Failed to cleanup order with BJS ID {$bjsId}: " . $e->getMessage());
+                $this->error("Failed to cleanup order with BJS ID {$bjsId}: ".$e->getMessage());
                 Log::error("Cleanup failed for BJS ID {$bjsId}", ['error' => $e->getMessage()]);
                 $failureCount++;
             }
         }
 
         $this->info("Cleanup completed: {$successCount} succeeded, {$failureCount} failed");
+
+        $this->call('order:cache');
 
         return $failureCount > 0 ? 1 : 0;
     }

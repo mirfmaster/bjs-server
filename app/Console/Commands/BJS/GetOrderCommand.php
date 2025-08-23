@@ -98,6 +98,8 @@ class GetOrderCommand extends Command
 
         $this->info("Fetch completed: {$successCount} succeeded, {$failureCount} failed, {$skippedCount} skipped");
 
+        $this->call('order:cache');
+
         return $failureCount > 0 ? 1 : 0;
     }
 

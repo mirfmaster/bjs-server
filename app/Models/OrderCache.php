@@ -27,7 +27,7 @@ final class OrderCache
     private static function keys(Order $order): array
     {
         return array_map(
-            fn(string $s) => self::key($order, $s),
+            fn (string $s) => self::key($order, $s),
             self::SUFFIXES
         );
     }
@@ -97,6 +97,8 @@ final class OrderCache
         $requested = (int) Cache::get(self::key($order, 'requested'), 0);
         $processed = (int) Cache::get(self::key($order, 'processed'), 0);
 
-        return ($requested - $processed) > 0;
+        $status = Cache::get(self::key($order, 'status'), 'pending');
+
+        return (($requested - $processed) > 0) && in_array($status, ['inprogress', 'processing']);
     }
 }

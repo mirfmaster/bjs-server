@@ -19,42 +19,34 @@ class OrderController extends Controller
      */
     public function index()
     {
-        // 1.  How many orders the server reserved (cached)
-        // Triggered from command order:cache
+        // 1.  Cached pending orders
         $likes = Cache::get('orders:pending:like', collect());
         $follows = Cache::get('orders:pending:follow', collect());
 
-        // 2.  Random amount each worker may take
+        // 2.  Keep only the ones that are actually processable
+        $likes = $likes->filter(fn (Order $o) => OrderCache::processable($o));
+        $follows = $follows->filter(fn (Order $o) => OrderCache::processable($o));
+
+        // 3.  Random slice sizes
         $maxLike = random_int(
             (int) config('app.orders.like.min_per_worker', 4),
             (int) config('app.orders.like.max_per_worker', 30)
         );
-
         $maxFollow = random_int(
             (int) config('app.orders.follow.min_per_worker', 1),
             (int) config('app.orders.follow.max_per_worker', 3)
         );
 
-        // 3.  Slice down to what the worker may actually process
+        // 4.  Slice down to what this worker will handle
         $workerLikes = $likes->take($maxLike);
         $workerFollows = $follows->take($maxFollow);
 
-        $mapProcessable = function ($orders) {
-            return $orders->mapWithKeys(fn(Order $order) => [
-                $order->getKey() => OrderCache::processable($order),
-            ]);
-        };
-
         return response()->json([
             'orders' => [
-                'totalLikes' => count($likes),
-                'totalFollow' => count($follows),
+                'totalLikes' => $likes->count(),
+                'totalFollow' => $follows->count(),
                 'like' => $workerLikes,
                 'follow' => $workerFollows,
-            ],
-            'processable' => [
-                'like' => $mapProcessable($workerLikes),
-                'follow' => $mapProcessable($workerFollows),
             ],
             'config' => config('app.orders', []),
         ]);

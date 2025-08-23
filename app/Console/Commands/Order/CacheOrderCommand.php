@@ -32,7 +32,7 @@ class CacheOrderCommand extends Command
 
         $follows = Order::query()
             ->whereIn('status', ['inprogress', 'processing'])
-            ->where('kind', 'like')
+            ->where('kind', 'follow')
             ->orderBy('priority', 'desc')
             ->orderBy('created_at', 'asc')
             ->limit($followBatch)

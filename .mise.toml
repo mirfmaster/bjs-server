@@ -48,4 +48,8 @@ run = '''
   git tag -a "$TAG" -m "Release $TAG"
   git push origin "$TAG"
   echo "Tagged and pushed $TAG"
+
+  # Write the tag into Laravel's cache
+  php artisan tinker --execute="Cache::put('system:server_version', '$TAG');"
+  echo "Cache updated: system:server_version = $TAG"
 '''

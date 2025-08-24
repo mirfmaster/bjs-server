@@ -138,44 +138,18 @@ class SystemController extends Controller
         return Response::json(['message' => 'Version set', 'version' => $version], 200);
     }
 
-    public function getWorkerVersion(Request $request)
+    public function getWorkerVersion()
     {
-        // Optional: require the same secret header
-        if ($request->header('Secret-Key') !== 'IndonesiaCemas') {
-            return Response::json(['message' => 'Unauthorized'], 401);
-        }
-
         $versions = Cache::get('system:worker_versions', []);
         $version = Cache::get('system:worker_version');
+        $serverVersion = Cache::get('system:server_version');
 
-        // if ($version === null) {
-        //     return Response::json(['message' => 'No version set'], 404);
-        // }
         $versions = array_slice($versions, -20, 20, true);
 
         return Response::json([
             'version' => $version,
             'versions' => $versions,
-            'server-version' => $this->gitVersion(),
+            'server-version' => $serverVersion,
         ]);
-    }
-
-    /**
-     * Return the current Git tag (or short hash if no tag).
-     */
-    private function gitVersion(): string
-    {
-        // Absolute path to the project root (so the command always runs in the right repo)
-        $basePath = base_path();
-
-        // Try to read the latest tag
-        $tag = trim(shell_exec("cd {$basePath} && git describe --tags --abbrev=0 2>/dev/null") ?? '');
-
-        // Fallback to short commit hash if no tag exists
-        if ($tag === '') {
-            $tag = trim(shell_exec("cd {$basePath} && git rev-parse --short HEAD 2>/dev/null") ?? '');
-        }
-
-        return $tag ?: 'unknown';
     }
 }

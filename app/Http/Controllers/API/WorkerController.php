@@ -71,8 +71,9 @@ class WorkerController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, Worker $worker): JsonResponse
+    public function update(Request $request): JsonResponse
     {
+        $worker = Worker::query()->where('username', $request->username)->firstOrFail();
         $worker->fill($request->all());
         $worker->save();
 

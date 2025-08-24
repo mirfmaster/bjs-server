@@ -46,6 +46,7 @@ Route::prefix('v2')
             ->name('workers.upsert');
         Route::get('workers/executors', [APIWorkerController::class, 'getExecutors']);
 
+        Route::put('workers', [APIOrderController::class, 'update']);
         Route::apiResource('workers', APIWorkerController::class);
 
         Route::post('orders/{order}/processing', [APIOrderController::class, 'processing']);

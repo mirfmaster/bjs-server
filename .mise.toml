@@ -23,6 +23,7 @@ run = '''
 
 [tasks.release]
 description = "Tag a release: vYYYY.mm.dd.patch (auto-increments patch for same day)"
+alias = "r"
 run = '''
   #!/usr/bin/env bash
   set -euo pipefail

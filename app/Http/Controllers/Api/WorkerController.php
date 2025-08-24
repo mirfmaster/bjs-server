@@ -9,6 +9,7 @@ use App\Models\WorkerStatusEvent;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -218,16 +219,19 @@ class WorkerController extends Controller
 
             // 3) Bulk-insert the corresponding events
             if ($affectedRows) {
-                $events = collect($ids)->map(fn ($id) => [
-                    'worker_id' => $id,
-                    'previous_status' => $from,
-                    'current_status' => $to,
-                    'activity' => 'mass-update',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ])->toArray();
-
-                WorkerStatusEvent::insert($events);
+                collect($ids)
+                    ->map(fn ($id) => [
+                        'worker_id' => $id,
+                        'previous_status' => $from,
+                        'current_status' => $to,
+                        'activity' => 'mass-update',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ])
+                    ->chunk(1000)
+                    ->each(
+                        fn (Collection $chunk) => WorkerStatusEvent::insert($chunk->toArray())
+                    );
             }
 
             return response()->json([

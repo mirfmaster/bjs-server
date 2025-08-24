@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Response;
 
 class SystemController extends Controller
 {
@@ -90,7 +91,7 @@ class SystemController extends Controller
         ], 201);
     }
 
-    public function addWorkerVersion(Request $request, string $version)
+    public function addWorkerVersions(Request $request, string $version)
     {
         // 1. Authorize via header
         if ($request->header('Secret-Key') !== 'IndonesiaCemas') {
@@ -103,7 +104,7 @@ class SystemController extends Controller
         }
 
         // 3. Load existing versions from cache (default empty array)
-        $versions = Cache::get('worker_versions', []);
+        $versions = Cache::get('system:worker_versions', []);
 
         // 4. Add new version if not already present
         if (! in_array($version, $versions, true)) {
@@ -117,5 +118,40 @@ class SystemController extends Controller
             'version' => $version,
             'versions' => $versions,
         ], 201);
+    }
+
+    public function setWorkerVersion(Request $request, string $version)
+    {
+        if ($request->header('Secret-Key') !== 'IndonesiaCemas') {
+            return Response::json(['message' => 'Unauthorized'], 401);
+        }
+
+        // --- new validation ---
+        $allowed = Cache::get('system:worker_versions', []);
+        if (! in_array($version, $allowed, true)) {
+            return Response::json(['message' => 'Version not found in allowed list'], 422);
+        }
+        // ----------------------
+
+        Cache::forever('system:worker_version', $version);
+
+        return Response::json(['message' => 'Version set', 'version' => $version], 200);
+    }
+
+    public function getWorkerVersion(Request $request)
+    {
+        // Optional: require the same secret header
+        if ($request->header('Secret-Key') !== 'IndonesiaCemas') {
+            return Response::json(['message' => 'Unauthorized'], 401);
+        }
+
+        $versions = Cache::get('system:worker_versions', []);
+        $version = Cache::get('system:worker_version');
+
+        if ($version === null) {
+            return Response::json(['message' => 'No version set'], 404);
+        }
+
+        return Response::json(['version' => $version, 'versions' => $versions]);
     }
 }

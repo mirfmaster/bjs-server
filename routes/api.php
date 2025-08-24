@@ -56,5 +56,7 @@ Route::prefix('v2')
         Route::apiResource('orders', APIOrderController::class);
 
         // SYSTEM
-        Route::post('system/worker-version/{version}', [SystemController::class, 'addWorkerVersion']);
+        Route::post('system/worker-versions/{version}', [SystemController::class, 'addWorkerVersions']);
+        Route::post('system/worker-version/{version}', [SystemController::class, 'setWorkerVersion']);
+        Route::get('system/worker-version', [SystemController::class, 'getWorkerVersion']);
     });

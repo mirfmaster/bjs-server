@@ -15,7 +15,7 @@ class OrderObserver
     {
         // Prime the cache with sensible defaults
         OrderCache::setStatus($order, OrderStatus::INPROGRESS->value);
-        OrderCache::setFirstInteraction($order, now()->timestamp);
+        // OrderCache::setFirstInteraction($order, now()->timestamp);
 
         // Counters start at 0
         // (Redis will auto-initialise to 1 on the first increment,
@@ -25,7 +25,7 @@ class OrderObserver
             OrderCache::key($order, 'processed') => 0,
             OrderCache::key($order, 'failed') => 0,
             OrderCache::key($order, 'duplicate_interaction') => 0,
-            OrderCache::key($order, 'requested') => $order->requested ?? 0,
+            OrderCache::key($order, 'requested') => $order->margin_requested ?? $order->requested ?? 0,
             OrderCache::key($order, 'fail_reason') => null,
         ]);
     }

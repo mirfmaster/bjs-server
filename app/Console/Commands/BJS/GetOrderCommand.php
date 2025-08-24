@@ -21,7 +21,7 @@ class GetOrderCommand extends Command
         $bjsClient = $service->bjs;
         $bjsIds = $this->argument('bjs_ids');
         $force = $this->option('force');
-        $this->info('Starting fetch for '.count($bjsIds).' orders');
+        $this->info('Starting fetch for ' . count($bjsIds) . ' orders');
 
         $successCount = 0;
         $failureCount = 0;
@@ -90,7 +90,7 @@ class GetOrderCommand extends Command
                     $failureCount++;
                 }
             } catch (\Exception $e) {
-                $this->error("Failed to fetch order with BJS ID {$bjsId}: ".$e->getMessage());
+                $this->error("Failed to fetch order with BJS ID {$bjsId}: " . $e->getMessage());
                 Log::error("Fetch failed for BJS ID {$bjsId}", ['error' => $e->getMessage()]);
                 $failureCount++;
             }
@@ -106,13 +106,15 @@ class GetOrderCommand extends Command
     private function handleLikeOrder(OrderDTO $orderDTO, BJSService $service): ?Order
     {
         // Prepare base order data
+        $requested = $orderDTO->count;
         $orderData = [
             'bjs_id' => $orderDTO->id,
             'kind' => 'like',
             'target' => $orderDTO->link,
             'reseller_name' => $orderDTO->user,
             'price' => $orderDTO->charge,
-            'requested' => $orderDTO->count,
+            'requested' => $requested,
+            'margin_request' => round($requested + max(10, min(100, $requested * (10 / 100)))),
             'status' => 'inprogress',
             'status_bjs' => 'inprogress',
             'source' => 'bjs',
@@ -163,7 +165,7 @@ class GetOrderCommand extends Command
 
         // Check if profile was found
         if (! $info->found) {
-            Log::info('User info not found for username: '.$username);
+            Log::info('User info not found for username: ' . $username);
 
             return null;
         }
@@ -208,7 +210,7 @@ class GetOrderCommand extends Command
             'price' => $orderDTO->charge,
             'start_count' => $startCount,
             'requested' => $requested,
-            'margin_request' => $requested, // No margin for follows
+            'margin_request' => round($requested + max(10, min(100, $requested * (10 / 100)))),
             'status' => 'inprogress',
             'status_bjs' => 'inprogress',
             'source' => 'bjs',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\OrderController as APIOrderController;
+use App\Http\Controllers\API\SystemController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\WorkerController;
 use App\Http\Controllers\API\WorkerController as APIWorkerController;
@@ -53,4 +54,7 @@ Route::prefix('v2')
         Route::post('orders/{order}/duplicate', [APIOrderController::class, 'duplicate']);
         Route::patch('orders/{order}/status', [APIOrderController::class, 'updateStatus']);
         Route::apiResource('orders', APIOrderController::class);
+
+        // SYSTEM
+        Route::post('system/worker-version/{version}', [SystemController::class, 'addWorkerVersion']);
     });

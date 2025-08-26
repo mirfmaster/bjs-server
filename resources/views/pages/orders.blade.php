@@ -455,7 +455,7 @@
                                         <td>
                                             <div class="d-flex px-2 py-1 flex-column">
                                                 <span class="text-secondary text-xs font-weight-bold">
-                                                    {{ number_format($order->start_count) }} }}
+                                                    Start: {{ number_format($order->start_count) }}
                                                 </span>
                                                 <span class="text-secondary text-xs font-weight-bold">
                                                     {{ number_format($order->processed) }}/{{ number_format($order->requested) }}

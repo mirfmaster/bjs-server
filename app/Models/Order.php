@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
@@ -68,7 +69,7 @@ class Order extends Model
      */
     public function getAnonymizedUrl(): string
     {
-        return 'https://anon.ws/?to='.urlencode($this->getInstagramUrl());
+        return 'https://anon.ws/?to=' . urlencode($this->getInstagramUrl());
     }
 
     // CACHE
@@ -100,5 +101,22 @@ class Order extends Model
     public function setStatusCached(string $status): void
     {
         OrderCache::setStatus($this, $status);
+    }
+
+    /**
+     * Set the started_at timestamp only if it has not been set yet.
+     *
+     * @return bool true if the column was updated, false if it already had a value
+     */
+    public function setStartedAtIfNotSet(?Carbon $timestamp = null): bool
+    {
+        // Already started?  Nothing to do.
+        if ($this->started_at !== null) {
+            return false;
+        }
+
+        $this->started_at = $timestamp ?? now();
+
+        return $this->save();   // returns true/false depending on success
     }
 }

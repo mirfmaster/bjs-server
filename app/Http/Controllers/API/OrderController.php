@@ -107,6 +107,7 @@ class OrderController extends Controller
     public function processing(Order $order)
     {
         OrderCache::setFirstInteraction($order, now()->timestamp);
+        $order->setFirstInteraction();
         $value = OrderCache::processing($order);
 
         return response()->json(['processing' => $value]);

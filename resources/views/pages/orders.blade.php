@@ -445,11 +445,16 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="d-flex px-2 py-1">
+                                            <div class="d-flex px-2 py-1 flex-column">
                                                 <span
                                                     class="badge badge-sm bg-gradient-{{ $order->status === 'completed' ? 'success' : ($order->status === 'partial' ? 'warning' : 'danger') }}">
                                                     {{ $order->status }}
                                                 </span>
+                                                @if ($order->note)
+                                                    <span class="text-warning text-xs font-weight-bold">
+                                                        Note: {{ $order->note }}
+                                                    </span>
+                                                @endif
                                             </div>
                                         </td>
                                         <td>

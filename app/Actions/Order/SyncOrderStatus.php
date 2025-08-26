@@ -126,6 +126,7 @@ class SyncOrderStatus
         }
 
         $this->updateModelOnly($order, $state);
+        OrderCache::flush($order);
 
         Log::info('Successfully updated BJS + model only for Partial');
     }
@@ -140,6 +141,7 @@ class SyncOrderStatus
         }
 
         $this->updateModelOnly($order, $state);
+        OrderCache::flush($order);
 
         Log::info('Successfully updated BJS + model only for Cancel');
     }
@@ -241,6 +243,7 @@ class SyncOrderStatus
                     'processed' => $state->processed,
                     'status' => OrderStatus::PARTIAL->value,
                     'status_bjs' => OrderStatus::PARTIAL->value,
+                    'note' => $state->failReason,
                     'partial_count' => $remains,
                     'end_at' => now(),
                 ]);
@@ -252,6 +255,7 @@ class SyncOrderStatus
                     'processed' => $state->processed,
                     'status' => OrderStatus::CANCEL->value,
                     'status_bjs' => OrderStatus::CANCEL->value,
+                    'note' => $state->failReason,
                     'partial_count' => $remains,
                     'end_at' => now(),
                 ]);

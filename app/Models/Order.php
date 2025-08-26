@@ -108,7 +108,7 @@ class Order extends Model
      *
      * @return bool true if the column was updated, false if it already had a value
      */
-    public function setStartedAtIfNotSet(?Carbon $timestamp = null): bool
+    public function setFirstInteraction(?Carbon $timestamp = null): bool
     {
         // Already started?  Nothing to do.
         if ($this->started_at !== null) {

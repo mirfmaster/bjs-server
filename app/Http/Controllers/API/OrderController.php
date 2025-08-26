@@ -24,8 +24,8 @@ class OrderController extends Controller
         $follows = Cache::get('orders:pending:follow', collect());
 
         // 2.  Keep only the ones that are actually processable
-        $likes = $likes->filter(fn (Order $o) => OrderCache::processable($o));
-        $follows = $follows->filter(fn (Order $o) => OrderCache::processable($o));
+        $likes = $likes->filter(fn(Order $o) => OrderCache::processable($o));
+        $follows = $follows->filter(fn(Order $o) => OrderCache::processable($o));
 
         // 3.  Random slice sizes
         $maxLike = random_int(
@@ -106,6 +106,7 @@ class OrderController extends Controller
     // --- STATE ------
     public function processing(Order $order)
     {
+        OrderCache::setFirstInteraction($order, now()->timestamp);
         $value = OrderCache::processing($order);
 
         return response()->json(['processing' => $value]);

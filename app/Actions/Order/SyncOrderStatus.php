@@ -15,8 +15,7 @@ class SyncOrderStatus
     public function __construct(
         public Order $order,
         public readonly BJSService $bjsService,
-    ) {
-    }
+    ) {}
 
     // TODO: the actions only handle BJS status, extract get query, direct order handler to upper layer
     public function handle()
@@ -128,6 +127,7 @@ class SyncOrderStatus
         }
 
         $this->updateModelOnly($order, $state);
+        Log::info("Flushing order {$order->id} cache on partial", ['state' => $state]);
         OrderCache::flush($order);
 
         Log::info('Successfully updated BJS + model only for Partial');
@@ -144,6 +144,7 @@ class SyncOrderStatus
         }
 
         $this->updateModelOnly($order, $state);
+        Log::info("Flushing order {$order->id} cache on cancel", ['state' => $state]);
         OrderCache::flush($order);
 
         Log::info('Successfully updated BJS + model only for Cancel');
@@ -199,6 +200,7 @@ class SyncOrderStatus
         }
 
         $this->updateModelOnly($order, $state);
+        Log::info("Flushing order {$order->id} cache on completed", ['state' => $state]);
         OrderCache::flush($order);
 
         Log::info('Successfully updated BJS + model only for Completed');

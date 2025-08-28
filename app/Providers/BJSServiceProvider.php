@@ -24,12 +24,12 @@ class BJSServiceProvider extends ServiceProvider
 
         // Bind the RedisCookieJar as a singleton
         $this->app->singleton(RedisCookieJar::class, function ($app) {
-            return new RedisCookieJar;
+            return new RedisCookieJar();
         });
 
         // Bind BJSClient as a singleton with the cookie jar
         $this->app->singleton(BJSClient::class, function ($app) {
-            return new BJSClient;
+            return new BJSClient();
         });
 
         // Bind BJSService with the client dependency
@@ -37,14 +37,14 @@ class BJSServiceProvider extends ServiceProvider
             $bjs = new BJSService(
                 $app->make(BJSClient::class)
             );
-            $bjs->auth();
+            // $bjs->auth();
 
             return $bjs;
         });
 
         // Bind Redis repository
         $this->app->singleton(RedisTiktokRepository::class, function ($app) {
-            return new RedisTiktokRepository;
+            return new RedisTiktokRepository();
         });
 
         // Bind BJSTiktokService with dependencies

@@ -15,7 +15,9 @@ class SyncOrderStatus
     public function __construct(
         public Order $order,
         public readonly BJSService $bjsService,
-    ) {}
+    ) {
+        $this->bjsService->auth();
+    }
 
     // TODO: the actions only handle BJS status, extract get query, direct order handler to upper layer
     public function handle()
@@ -37,7 +39,7 @@ class SyncOrderStatus
             ->limit($followBatch)
             ->get();
         $orders = $like->merge($follow);
-        Log::info('Syncing '.count($orders).' orders status');
+        Log::info('Syncing ' . count($orders) . ' orders status');
 
         foreach ($orders as $order) {
             match ($order->source) {
@@ -83,7 +85,7 @@ class SyncOrderStatus
             OrderStatus::PARTIAL => $this->handlePartial($order, $state),
             OrderStatus::CANCEL => $this->handleCancel($order, $state),
             OrderStatus::COMPLETED => $this->handleCompleted($order, $state),
-            default => Log::warning('STATUS STATE IS NOT RECOGNIZED: '.$state?->status?->value),
+            default => Log::warning('STATUS STATE IS NOT RECOGNIZED: ' . $state?->status?->value),
         };
     }
 
@@ -280,7 +282,7 @@ class SyncOrderStatus
             default:
                 Log::warning(
                     "Model-only: {$order->id} unhandled status "
-                        .$state->status->value
+                        . $state->status->value
                 );
         }
     }

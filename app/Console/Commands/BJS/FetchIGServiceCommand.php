@@ -33,12 +33,14 @@ class FetchIGServiceCommand extends Command
      */
     public function handle()
     {
-        if (! $this->option('force') && ! $this->ready()) {
-            return Command::SUCCESS;
-        }
 
         /** @var BJSService */
         $bjsService = app(BJSService::class);
+        $bjsService->auth();
+
+        if (! $this->option('force') && ! $this->ready()) {
+            return Command::SUCCESS;
+        }
         /** @var InstagramClient */
         $igClient = app(InstagramClient::class);
 
@@ -67,12 +69,6 @@ class FetchIGServiceCommand extends Command
     {
         if (! (bool) Redis::get('system:bjs:login-state')) {
             $this->warn('Skipping – login state is false');
-
-            return false;
-        }
-
-        if (! app(BJSService::class)->auth()) {
-            $this->warn('Authentication failed');
 
             return false;
         }

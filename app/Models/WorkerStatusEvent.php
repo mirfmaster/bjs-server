@@ -22,4 +22,9 @@ class WorkerStatusEvent extends Model
     protected $casts = [
         'meta' => 'array',
     ];
+
+    public function worker()
+    {
+        return $this->belongsTo(Worker::class, 'worker_id', 'id');
+    }
 }

@@ -59,9 +59,12 @@ class WorkerController extends Controller
      */
     public function show(Worker $worker): JsonResponse
     {
+        $pagination = $worker->events()->latest()->paginate(15);
+
         return response()->json([
             'success' => true,
             'data' => $worker,
+            'events' => $pagination->items(),
         ], 200);
     }
 

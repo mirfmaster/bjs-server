@@ -75,4 +75,9 @@ class Worker extends Model
     {
         return 'username';
     }
+
+    public function events()
+    {
+        return $this->hasMany(WorkerStatusEvent::class, 'worker_id', 'id');
+    }
 }
